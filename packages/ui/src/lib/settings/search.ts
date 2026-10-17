@@ -1483,7 +1483,7 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.integrations.thirdParty.title',
     descriptionKey: 'settings.integrations.thirdParty.info',
     keywords: ['plugin', 'provider', 'install', 'update', 'remove', 'subscription'],
-    isAvailable: (ctx) => !ctx.isVSCode,
+    isAvailable: (ctx) => !ctx.isVSCode && !ctx.enterpriseMode,
   },
   {
     id: 'integrations.third-party.opencode-claude',
@@ -1491,7 +1491,7 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.integrations.thirdParty.opencodeClaude.name',
     descriptionKey: 'settings.integrations.thirdParty.opencodeClaude.description',
     keywords: ['claude', 'anthropic', 'claude code', 'pro', 'max', 'agent sdk', '@openchamber/opencode-claude'],
-    isAvailable: (ctx) => !ctx.isVSCode,
+    isAvailable: (ctx) => !ctx.isVSCode && !ctx.enterpriseMode,
   },
   {
     id: 'integrations.extensions',
