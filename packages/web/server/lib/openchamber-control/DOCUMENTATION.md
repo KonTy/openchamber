@@ -11,9 +11,10 @@ other.
 
 - `service.js` validates and executes the fixed project, model, session, and
   scheduled-task action allowlist. `actions.js` marks CLI-only actions with
-  `agentExposed: false` (currently `schedule.status`); the agent tool consumes
-  the filtered `OPENCHAMBER_AGENT_TOOL_*` exports. `schedule.toggle` requires
-  the `disabled` boolean and replaces separate enable/disable actions; its
+  `agentExposed: false` (currently `schedule.status` and `theme.set`); the
+  agent tool consumes the filtered `OPENCHAMBER_AGENT_TOOL_*` exports.
+  `schedule.toggle` requires the `disabled` boolean and replaces separate
+  enable/disable actions; its
   `enabled` is the saved state, never the requested one. Loop tasks and the
   refusal to enable a repository loop are the scheduled-task service's rules
   (`../scheduled-tasks/DOCUMENTATION.md`, *Local approval*).
@@ -223,6 +224,22 @@ other.
   zero is a 503, never a claimed success. Paths outside the workspace are
   allowed on purpose: screenshots and recordings often land in a temp
   directory, and the viewer already reads such files.
+- `theme.set` switches every connected window to the theme `id`, for a
+  script that keeps the app in step with the desktop. It is CLI-only: the
+  agent has no reason to restyle the user's app. The service checks that an id
+  is present and hands `{ id }` to the injected `setTheme`, which `index.js`
+  writes to every UI control stream as `openchamber:theme-set-request` and
+  answers with the number of open streams; zero is a 503. Each window runs
+  `useExternalThemeSwitch`. It loads the custom themes again, so a theme file
+  written just before the call is found, and then calls the theme context's
+  `setTheme`, which saves the choice under the window's own surface as if the
+  user had picked it. How see-through the window is belongs to the theme
+  (`config.backgroundOpacity`, see `packages/ui/src/lib/theme/DOCUMENTATION.md`);
+  the request carries no opacity. The server does not know the theme ids: a
+  window ignores an id it has no theme for, and the call still reports the
+  windows reached. VS Code and
+  the mobile app do not follow it: VS Code has no event stream and the mobile
+  app does not mount the hook.
 - `browser.capture` writes its image on the server, into
   `.openchamber/screenshots/` under the scoped project directory, and returns
   the project-relative path rather than the image bytes. The client that took

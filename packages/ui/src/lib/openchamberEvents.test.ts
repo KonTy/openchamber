@@ -381,6 +381,22 @@ describe('openchamber events', () => {
     }
   });
 
+  test('dispatches an external theme switch only with a theme id', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const events: unknown[] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => events.push(event));
+    try {
+      for (const properties of [{ id: 'nord-dark' }, {}, { id: '' }, { id: 7 }]) {
+        MockEventSource.instances[0].onmessage?.({
+          data: JSON.stringify({ type: 'openchamber:theme-set-request', properties }),
+        });
+      }
+      expect(events).toEqual([{ type: 'theme-set-request', id: 'nord-dark' }]);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   test('dispatches an agent file-open request and drops one without a path', async () => {
     const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
     const events: unknown[] = [];

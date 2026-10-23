@@ -375,6 +375,7 @@ export const resolveMainWindowBounds = () => {
 // The splash background for the theme the window will open in, so the frame
 // Chromium paints before the splash never flashes a foreign colour.
 export const resolveSplashBackgroundColor = (themeSource = nativeTheme.themeSource) => {
+  if (usesTransparentWindow()) return '#00000000';
   const settings = readSettingsRoot();
   const dark = themeSource === 'dark' || (themeSource !== 'light' && nativeTheme.shouldUseDarkColors);
   return dark
@@ -407,6 +408,7 @@ export const buildRendererAdditionalArguments = ({
   explicitRuntime = false,
   trayEnabled = isMacMenuBarEnabled(),
   nativeFrame = usesLinuxNativeFrame(),
+  transparentWindow = usesTransparentWindow(),
 } = {}) => [
   `--openchamber-local-origin=${localOrigin}`,
   `--openchamber-api-base-url=${apiBaseUrl}`,
@@ -419,6 +421,7 @@ export const buildRendererAdditionalArguments = ({
   `--openchamber-relay-host-id=${relayHostId}`,
   `--openchamber-explicit-runtime=${explicitRuntime ? '1' : '0'}`,
   `--openchamber-native-frame=${nativeFrame ? '1' : '0'}`,
+  `--openchamber-transparent-window=${transparentWindow ? '1' : '0'}`,
 ];
 
 // Linux can opt into the desktop environment's own title bar (Settings ->
@@ -429,6 +432,13 @@ const usesLinuxNativeFrame = () => (
 
 export const usesFramelessChrome = () => (
   process.platform === 'win32' || (process.platform === 'linux' && !usesLinuxNativeFrame())
+);
+
+// OPENCHAMBER_TRANSPARENT_WINDOW=1 gives the frameless Linux window an alpha
+// channel, so a theme can paint its background below full opacity. Electron
+// fixes this at window creation; without the variable the window is opaque.
+export const usesTransparentWindow = () => (
+  process.platform === 'linux' && process.env.OPENCHAMBER_TRANSPARENT_WINDOW === '1' && usesFramelessChrome()
 );
 
 export const buildMainWindowOptions = ({ bounds, backgroundColor, additionalArguments }) => {
@@ -443,6 +453,7 @@ export const buildMainWindowOptions = ({ bounds, backgroundColor, additionalArgu
     icon: getWindowIconPath(),
     show: false,
     backgroundColor,
+    transparent: usesTransparentWindow(),
     frame: frameless ? false : undefined,
     autoHideMenuBar: process.platform !== 'darwin',
     // Electron's hiddenInset adds its own extra inset, which leaves the controls

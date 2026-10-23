@@ -208,7 +208,8 @@ default and when to set it. Field names and JSON types carry the rest.
   they will follow and talk to.
 - The tool exposes only agent-relevant actions
   (`OPENCHAMBER_AGENT_TOOL_ACTIONS`): `schedule.status` stays CLI-only because
-  `schedule.list` already returns scheduler status, and enable/disable are one
+  `schedule.list` already returns scheduler status, `theme.set` stays CLI-only
+  because restyling the user's app is not agent work, and enable/disable are one
   `schedule.toggle` action driven by the `disabled` boolean.
 - The tool description frames intent: created sessions and scheduled tasks are
   user-facing work the user follows up with. The agent must not decide on its

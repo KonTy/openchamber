@@ -128,5 +128,7 @@ export interface Theme {
       normal?: string;
       slow?: string;
     };
+    /** Opacity of the window background, above 0 up to 1. Only a window created transparent shows it. */
+    backgroundOpacity?: number;
   };
 }

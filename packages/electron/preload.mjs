@@ -21,6 +21,8 @@ const macosMajor = Number.parseInt(macosMajorRaw, 10);
 const trayEnabled = process.platform !== 'darwin' || readArgValue('--openchamber-tray-enabled') !== '0';
 // The window has the desktop environment's own title bar, so the page draws no window controls.
 const nativeFrame = readArgValue('--openchamber-native-frame') === '1';
+// The window was created with an alpha channel, so a theme may paint its background below full opacity.
+const transparentWindow = readArgValue('--openchamber-transparent-window') === '1';
 
 // Preload re-executes on every cross-origin navigation (we run with
 // sandbox:false, per-document). Two separate concerns to balance:
@@ -105,6 +107,7 @@ contextBridge.exposeInMainWorld('__OPENCHAMBER_ELECTRON__', {
   arch: process.arch,
   trayEnabled,
   nativeFrame,
+  transparentWindow,
 });
 
 contextBridge.exposeInMainWorld('__OPENCHAMBER_PLATFORM__', process.platform);

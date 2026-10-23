@@ -27,6 +27,7 @@ export const OPENCHAMBER_CONTROL_ACTION_DEFINITIONS = Object.freeze([
   { action: 'schedule.delete', title: 'Delete a scheduled task', description: 'Delete taskId' },
   { action: 'schedule.toggle', title: 'Enable or disable a scheduled task', description: 'Requires taskId and disabled' },
   { action: 'file.open', title: 'Show a file to the user', description: 'Put path in front of the user\'s file panel, for a result worth seeing: a screenshot, report, CSV, recording, generated page' },
+  { action: 'theme.set', title: 'Switch the theme', description: 'Switch every connected window to theme id, a built-in or a custom theme file in the themes folder; requires id', agentExposed: false },
 ]);
 
 const OPENCHAMBER_CONTROL_ACTIONS = Object.freeze(

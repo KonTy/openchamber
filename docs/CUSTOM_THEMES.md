@@ -119,7 +119,7 @@ Add an override only when the default relationship does not fit your palette.
 
 Built-in JSON files in `packages/ui/src/lib/theme/themes/` show the supported overrides. The full syntax mapping is in `packages/ui/src/lib/theme/syntax.ts`.
 
-Optional `config.fonts` accepts `sans`, `mono` and `heading`. Optional `config.transitions` accepts `fast`, `normal` and `slow` CSS transition values.
+Optional `config.fonts` accepts `sans`, `mono` and `heading`. Optional `config.transitions` accepts `fast`, `normal` and `slow` CSS transition values. Optional `config.backgroundOpacity`, a number above 0 up to 1, lets the desktop show through the window background of the Linux desktop app when it starts with `OPENCHAMBER_TRANSPARENT_WINDOW=1`; every other window ignores it. It changes backgrounds only, and panels that paint their own background, such as the terminal, diff viewer and file editor, stay opaque.
 
 ## Tune the theme in the app
 

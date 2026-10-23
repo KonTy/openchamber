@@ -364,6 +364,7 @@ The server (`packages/web/server/lib/fs/ripgrep.js`) looks for ripgrep in this o
 | `OPENCHAMBER_SKIP_API_COMPRESSION=true` | Defaulted by Desktop to reduce local CPU overhead |
 | `OPENCHAMBER_STARTUP_PERF=1` | Enables privacy-safe startup phase timings in Desktop/server logs; disabled by default |
 | `OPENCHAMBER_DESKTOP_USER_DATA_DIR` | Test hook used by `profile:startup`: moves the Electron profile (single-instance lock, Chromium caches) so a measured launch does not share it with the installed app |
+| `OPENCHAMBER_TRANSPARENT_WINDOW=1` | Linux with frameless chrome only: creates the main and mini-chat windows transparent, so a theme with `config.backgroundOpacity` below 1 can let the desktop show through its background. Chromium fixes this when the window is created, so it applies to the next launch. Text stays opaque only if the compositor does not apply its own whole-window opacity to the app. Unset, nothing changes |
 | `OPENCODE_HOST` / `OPENCODE_PORT` / `OPENCODE_SKIP_START` | Connect Desktop to an external OpenCode server instead of starting one locally |
 
 ## Native Features Owned Here

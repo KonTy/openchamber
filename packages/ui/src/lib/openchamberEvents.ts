@@ -109,6 +109,9 @@ type ProjectContextChangedEvent = { type: 'project-context-changed' } & z.infer<
 const sessionFoldersChangedSchema = z.object({ updatedAt: z.number().finite() });
 type SessionFoldersChangedEvent = { type: 'session-folders-changed' } & z.infer<typeof sessionFoldersChangedSchema>;
 
+const themeSetRequestSchema = z.object({ id: z.string().min(1) });
+type ThemeSetRequestEvent = { type: 'theme-set-request' } & z.infer<typeof themeSetRequestSchema>;
+
 /**
  * The extension chosen as browser provider can no longer serve (paused,
  * removed, or approval withdrawn), so the server put the in-app browser back.
@@ -252,6 +255,7 @@ type OpenChamberEvent =
   | LimitFailoverEvent
   | ProjectContextChangedEvent
   | SessionFoldersChangedEvent
+  | ThemeSetRequestEvent
   | AgentMemoryChangedEvent;
 type Listener = (event: OpenChamberEvent) => void;
 
@@ -545,6 +549,12 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
   if (envelope.type === 'openchamber:session-folders-changed') {
     const parsed = sessionFoldersChangedSchema.safeParse(envelope.properties);
     if (parsed.success) for (const listener of listeners) listener({ type: 'session-folders-changed', ...parsed.data });
+    return;
+  }
+
+  if (envelope.type === 'openchamber:theme-set-request') {
+    const parsed = themeSetRequestSchema.safeParse(envelope.properties);
+    if (parsed.success) for (const listener of listeners) listener({ type: 'theme-set-request', ...parsed.data });
     return;
   }
 

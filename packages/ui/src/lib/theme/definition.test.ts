@@ -51,6 +51,15 @@ describe('compact theme definitions', () => {
     expect(themeSchema.safeParse(malformed).success).toBe(false);
     expect(themeListSchema.parse([malformed, minimal, null]).map((theme) => theme.metadata.id)).toEqual(['minimal']);
   });
+
+  test('keeps a background opacity above 0 up to 1 and refuses anything else', () => {
+    for (const backgroundOpacity of [0.5, 1]) {
+      expect(requireTheme({ ...minimal, config: { backgroundOpacity } }).config?.backgroundOpacity).toBe(backgroundOpacity);
+    }
+    for (const backgroundOpacity of [0, -0.2, 1.01, '0.5', null]) {
+      expect(themeSchema.safeParse({ ...minimal, config: { backgroundOpacity } }).success).toBe(false);
+    }
+  });
 });
 
 describe('Catppuccin built-in palettes', () => {

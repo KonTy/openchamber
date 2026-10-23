@@ -1920,6 +1920,11 @@ const openChamberControlService = createOpenChamberControlService({
     }
     return delivered;
   },
+  // Each window applies the theme itself; the open streams are the count.
+  setTheme: (request) => {
+    broadcastOpenChamberUiEvent({ type: 'openchamber:theme-set-request', properties: request });
+    return uiOpenChamberEventClients.size;
+  },
   isKnowledgeToolEnabled: async () => {
     const settings = await readSettingsFromDiskMigrated().catch(() => null);
     return settings?.agentKnowledgeToolEnabled !== false;

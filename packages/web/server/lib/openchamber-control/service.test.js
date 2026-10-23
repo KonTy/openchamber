@@ -642,6 +642,34 @@ describe('file.open', () => {
   });
 });
 
+describe('theme.set', () => {
+  it('asks the windows to switch and reports how many were reached', async () => {
+    const setTheme = vi.fn(() => 2);
+    const { service } = createService({ setTheme });
+
+    const result = await service.execute('theme.set', { id: ' tokyonight-dark ' });
+
+    expect(setTheme).toHaveBeenCalledWith({ id: 'tokyonight-dark' });
+    expect(result).toEqual({ id: 'tokyonight-dark', delivered: 2 });
+  });
+
+  it('answers 400 without an id', async () => {
+    const setTheme = vi.fn(() => 1);
+    const { service } = createService({ setTheme });
+
+    await expect(service.execute('theme.set', { id: '  ' })).rejects.toMatchObject({ statusCode: 400 });
+    expect(setTheme).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['no window is connected', { setTheme: vi.fn(() => 0) }],
+    ['this server has no theme switch wired', {}],
+  ])('answers 503 when %s', async (_name, overrides) => {
+    const { service } = createService(overrides);
+    await expect(service.execute('theme.set', { id: 'nord-dark' })).rejects.toMatchObject({ statusCode: 503 });
+  });
+});
+
 describe('notify.send', () => {
   it('sends the notice for the calling session and returns what was delivered', async () => {
     const notifyUser = vi.fn(async () => ({ status: 200, body: { delivered: true } }));

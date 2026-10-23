@@ -93,6 +93,7 @@ describe('agent tool action allowlist', () => {
   it.each([
     'session.delete',
     'schedule.status',
+    'theme.set',
   ])('rejects %s outside the agent allowlist without invoking the service', async (action) => {
     const { runtime, executeAction } = await createRuntime();
     await expect(runtime.execute({ input: { action } })).resolves.toEqual(expect.objectContaining({

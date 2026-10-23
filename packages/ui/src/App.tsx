@@ -24,6 +24,7 @@ import { useAgentMemorySync } from '@/hooks/useAgentMemorySync';
 import { useBrowserProviderSync } from '@/hooks/useBrowserProviderSync';
 import { useSourceControlProviderSync } from '@/hooks/useSourceControlProviderSync';
 import { useLimitFailoverNotices } from '@/hooks/useLimitFailoverNotices';
+import { useExternalThemeSwitch } from '@/hooks/useExternalThemeSwitch';
 import { useEnterprisePolicySync } from '@/hooks/useEnterprisePolicySync';
 import { useRelayLimitToast } from '@/hooks/useRelayLimitToast';
 import { useRoutingSync } from '@/hooks/useRoutingSync';
@@ -687,6 +688,7 @@ function App({ apis }: AppProps) {
   useBrowserProviderSync();
   useSourceControlProviderSync(apis.sourceControl);
   useLimitFailoverNotices();
+  useExternalThemeSwitch();
   useRoutingSync();
   useEnterprisePolicySync();
   // Desktop windows on a relay host; the phone has its own handling in MobileApp.
