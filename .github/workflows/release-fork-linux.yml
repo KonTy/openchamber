@@ -58,7 +58,7 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends git ca-certificates curl \
-            build-essential python3 rpm unzip xz-utils zstd xvfb xauth \
+            build-essential python3 rpm unzip xz-utils zstd zlib1g-dev xvfb xauth \
             libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libxtst6 \
             libsecret-1-0 libnotify4 libxkbcommon0 xdg-utils
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -16,7 +16,8 @@ const usage = `Usage:
   updater-e2e-fixture.mjs serve --dir <feed-dir> [--port <port>]
   updater-e2e-fixture.mjs run --arch <x64|arm64> --current <N.AppImage> --next <N+1.AppImage> --version <N+1> --dir <feed-dir> [--port <port>]
 
-Both AppImages must be packaged with OPENCHAMBER_UPDATER_E2E_BUILD=1 during bundle:main.
+N must be packaged with OPENCHAMBER_UPDATER_E2E_BUILD=1 during bundle:main.
+N+1 can be a normal production AppImage.
 The run command stages N+1, serves it on 127.0.0.1, and launches N with only the two
 runtime E2E gates. Use the Desktop update UI to check, download, apply, and restart.
 Keep this process running until the restarted N+1 is verified, then press Ctrl-C.`;

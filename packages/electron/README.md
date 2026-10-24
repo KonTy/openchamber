@@ -31,6 +31,10 @@ The runtime containers allocate 1 GiB of shared memory. Docker and Podman's
 64 MiB default exhausts Chromium's asset-loading buffers during packaged startup
 and leaves the renderer blank with `ERR_UNEXPECTED` asset failures.
 
+The ARM64 AppImage launcher also requires unversioned `libz.so`. On Ubuntu,
+install `zlib1g-dev` alongside the FUSE runtime before running that AppImage.
+The DEB and RPM launchers do not share this AppImage prerequisite.
+
 The theme-control fixture also accepts `--development` instead of
 `--executable`. It runs the normal Electron/HMR launcher with fresh data,
 password authentication, ephemeral API/UI/CDP ports and native alpha explicitly

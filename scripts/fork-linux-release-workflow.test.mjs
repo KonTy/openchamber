@@ -9,6 +9,8 @@ test('fork Linux builds use standard native runners and the Ubuntu 22.04 userspa
   assert.equal(workflow.jobs.build.if, "${{ github.repository == 'KonTy/openchamber' }}");
   assert.equal(workflow.jobs.build.container.image, 'ubuntu:22.04');
   assert.equal(workflow.jobs.build.container.options, '--shm-size=1g');
+  const tools = workflow.jobs.build.steps.find((step) => step.name === 'Install build and desktop runtime tools');
+  assert(tools.run.includes('zlib1g-dev'));
   assert.deepEqual(workflow.jobs.build.strategy.matrix.include.map(({ runner, arch }) => [runner, arch]), [
     ['ubuntu-24.04', 'x64'], ['ubuntu-24.04-arm', 'arm64'],
   ]);

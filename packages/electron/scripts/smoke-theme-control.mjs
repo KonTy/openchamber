@@ -21,7 +21,7 @@ assert(values.directory && values.report, 'Supply --directory and --report');
 assert(Boolean(values.executable) !== values.development, 'Supply either --executable or --development');
 if (values.executable) await fs.access(path.resolve(values.executable));
 const root = path.resolve(values.directory);
-await fs.mkdir(root, { recursive: false });
+await fs.mkdir(root, { recursive: false, mode: 0o700 });
 const data = path.join(root, 'data');
 const profile = path.join(root, 'electron');
 const password = randomUUID();
@@ -31,7 +31,7 @@ await fs.writeFile(path.join(data, 'settings.json'), JSON.stringify({
   desktopUiPassword: password,
   desktopLanAccessEnabled: false,
   desktopDefaultHostId: 'local',
-}));
+}), { mode: 0o600 });
 const fixture = JSON.parse(await fs.readFile(new URL('../../ui/src/lib/theme/themes/openchamber-dark.json', import.meta.url), 'utf8'));
 fixture.metadata.id = 'fixture-release-theme';
 fixture.config = { ...fixture.config, backgroundOpacity: 0.5 };
