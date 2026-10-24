@@ -2,6 +2,30 @@
 
 Electron desktop runtime for OpenChamber on macOS, Windows, and Linux.
 
+## Fork Linux releases
+
+The `Fork Linux release` workflow builds AppImage, DEB and RPM artifacts on
+native x64 and arm64 GitHub runners in Ubuntu 22.04 containers. It installs the
+DEB in the disposable build container and exercises authenticated theme
+application and persistence across 2 native windows. A separate Arch container
+builds and installs the x86_64 package from a SHA256-pinned DEB recipe and runs
+the same checks. Each install checks that an existing `/usr/bin/openchamber`
+CLI remains unchanged.
+
+The Arch package is named `openchamber-desktop`. Its launcher starts
+`/opt/OpenChamber/openchamber`, and its resources identify the package as `arch`.
+Update it through pacman or rebuild the published `PKGBUILD`; the application's
+DEB/RPM updater does not support this format. The generated recipe pins both
+the DEB checksum and the source commit's MIT license.
+
+Pushes to `work-upstream-theme-integration` build validation artifacts.
+Manual runs can create a draft only from `work-theme-integration-baseline`.
+The workflow verifies the complete inventory, both updater manifests and native
+reports before writing `SHA256SUMS` and source provenance. It never publishes
+the draft automatically. Nobara runtime, isolated AppImage update/shutdown and
+HMR validation remain separate release gates. Container checks do not prove
+compositor rendering, host sandbox policy or desktop integration on a real OS.
+
 This package owns the native shell: windows, menus, deep links, native notifications, auto-updates, host switching, SSH connections, tunnel helpers, and packaged desktop builds. The web UI and OpenChamber server logic still live in `packages/web` and shared React UI lives in `packages/ui`.
 
 ## How It Runs

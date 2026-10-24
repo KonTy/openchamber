@@ -1,0 +1,26 @@
+pkgname=openchamber-desktop
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='OpenChamber desktop runtime with bundled OpenCode'
+arch=('x86_64')
+url='https://github.com/KonTy/openchamber'
+license=('MIT')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libxtst' 'libnotify'
+         'xdg-utils' 'libsecret' 'libxkbcommon' 'mesa')
+options=('!strip' '!debug')
+source=("https://github.com/KonTy/openchamber/releases/download/v${pkgver}/OpenChamber-${pkgver}-linux-amd64.deb"
+        "https://raw.githubusercontent.com/KonTy/openchamber/@SOURCE_COMMIT@/LICENSE")
+sha256sums=('@DEB_SHA256@'
+            '@LICENSE_SHA256@')
+noextract=("OpenChamber-${pkgver}-linux-amd64.deb")
+
+package() {
+  set -o pipefail
+  ar p "${srcdir}/OpenChamber-${pkgver}-linux-amd64.deb" data.tar.xz |
+    bsdtar -xpf - -C "${pkgdir}"
+  test -x "${pkgdir}/opt/OpenChamber/openchamber"
+  test ! -e "${pkgdir}/usr/bin/openchamber"
+  test ! -L "${pkgdir}/usr/bin/openchamber"
+  printf 'arch\n' > "${pkgdir}/opt/OpenChamber/resources/package-type"
+  install -Dm644 "${srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
