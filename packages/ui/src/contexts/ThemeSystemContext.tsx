@@ -132,6 +132,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   const themeImportRequestRef = useRef(0);
   const themeRuntimeGenerationRef = useRef(0);
   const missingThemeReloadRef = useRef('');
+  const activeRuntimeKey = getRuntimeKey();
   // Set only by the handlers a person reaches through the UI. The persist
   // effect below writes to the server only while this is raised, so a mount,
   // a runtime switch, an OS light/dark flip, or a settings sync adopting
@@ -223,7 +224,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
 
   const reloadCustomThemes = useCallback(async () => {
     if (typeof window === 'undefined' || isVSCode) {
-      return;
+      return null;
     }
 
     const runtimeKey = getRuntimeKey();
@@ -240,19 +241,22 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
 
       if (res.status === 401) {
         // UI auth gate will handle prompting; avoid noisy retries here.
-        return;
+        return null;
       }
 
       if (!res.ok) {
-        return;
+        console.warn('Could not reload custom themes:', res.status);
+        return null;
       }
 
       const payload = await res.json();
-      if (request !== customThemesRequestRef.current || runtimeKey !== getRuntimeKey()) return;
+      if (request !== customThemesRequestRef.current || runtimeKey !== getRuntimeKey()) return null;
       const normalized = themeListSchema.parse(payload?.themes);
       setCustomThemes(normalized);
-    } catch {
-      // ignore
+      return normalized;
+    } catch (error) {
+      console.warn('Could not reload custom themes:', error);
+      return null;
     } finally {
       if (request === customThemesRequestRef.current && runtimeKey === getRuntimeKey()) {
         setCustomThemesLoading(false);
@@ -394,16 +398,17 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   }, [preferences.themeMode]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    writeThemePreferencesForRuntime(getRuntimeKey(), {
+    writeThemePreferencesForRuntime(activeRuntimeKey, {
       themeMode: preferences.themeMode,
       lightThemeId: preferences.lightThemeId,
       darkThemeId: preferences.darkThemeId,
     });
+  }, [activeRuntimeKey, preferences]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
     // Cosmetic last-writer-wins hints for the pre-React splash shells
     // (packages/web/index.html, mobile.html, mini-chat.html) and the Android
     // status bar, which run before the scoped key can be read. Not part of the
@@ -588,17 +593,19 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       }
 
       setPreferences((prev) => {
-        if (prev.lightThemeId === theme.metadata.id) {
+        const themeMode = currentTheme.metadata.variant === 'light' ? prev.themeMode : 'light';
+        if (prev.lightThemeId === theme.metadata.id && prev.themeMode === themeMode) {
           return prev;
         }
         themeWriteIntentRef.current = true;
         return {
           ...prev,
           lightThemeId: theme.metadata.id,
+          themeMode,
         };
       });
     },
-    [availableThemes],
+    [availableThemes, currentTheme.metadata.variant],
   );
 
   const setDarkThemePreference = useCallback(
@@ -612,17 +619,19 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       }
 
       setPreferences((prev) => {
-        if (prev.darkThemeId === theme.metadata.id) {
+        const themeMode = currentTheme.metadata.variant === 'dark' ? prev.themeMode : 'dark';
+        if (prev.darkThemeId === theme.metadata.id && prev.themeMode === themeMode) {
           return prev;
         }
         themeWriteIntentRef.current = true;
         return {
           ...prev,
           darkThemeId: theme.metadata.id,
+          themeMode,
         };
       });
     },
-    [availableThemes],
+    [availableThemes, currentTheme.metadata.variant],
   );
 
   const importTheme = useCallback(async (definition: ThemeDefinition, { activate = true }: { activate?: boolean } = {}): Promise<Theme> => {

@@ -69,6 +69,13 @@ describe('VS Code theme import', () => {
     expect(theme.colors.surface.elevated).not.toBe('#181715');
   });
 
+  test('treats the default color value as unset', () => {
+    const withDefault = { ...source.colors, 'sideBar.background': 'default', 'scmGraph.foreground1': 'default' };
+    const absent = { ...source.colors, 'sideBar.background': undefined };
+    expect(importVSCodeTheme(JSON.stringify({ ...source, colors: withDefault }), 'fixture.json'))
+      .toEqual(importVSCodeTheme(JSON.stringify({ ...source, colors: absent }), 'fixture.json'));
+  });
+
   test('uses the last matching TextMate color and respects disabled semantic highlighting', () => {
     const theme = requireTheme(importVSCodeTheme(JSON.stringify({ ...source, semanticHighlighting: false, tokenColors: [...source.tokenColors, { scope: 'keyword', settings: { foreground: '#bb77ee' } }] }), 'night.json'));
     expect(theme.colors.syntax.base.keyword).toBe('#bb77ee');

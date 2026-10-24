@@ -1,5 +1,13 @@
 # Contributing to OpenChamber
 
+## Working in the KonTy fork
+
+Base fork work and release preparation on `work-theme-integration-baseline`.
+`bun run check:changed` compares against that branch on `origin`; use
+`-- --base <ref>` for an explicit comparison. Keep `main` and the original
+prototype branches intact. Canonical upstream contribution guidance follows
+below and still applies when proposing a change upstream.
+
 ## Before you start
 
 Bug fixes and small improvements: just open the PR. That's most of what gets

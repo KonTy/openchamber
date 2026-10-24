@@ -20,6 +20,7 @@
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import manifest from '../package.json' with { type: 'json' };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -48,6 +49,7 @@ const result = await Bun.build({
   naming: '[name].mjs',
   define: {
     __OPENCHAMBER_UPDATER_E2E_BUILD__: updaterE2eBuild ? 'true' : 'false',
+    __OPENCHAMBER_FORK_LINUX_TRANSPARENCY__: manifest.build.extraMetadata.openchamberFork.linuxTransparentWindow ? 'true' : 'false',
   },
 });
 

@@ -167,6 +167,7 @@ import { createTurnDurationRecorder } from './lib/openchamber-sessions/turn-dura
 import { createOpenCodeClient } from './lib/openchamber-sessions/opencode-client.js';
 import { createScheduledTaskService } from './lib/scheduled-tasks/service.js';
 import { createOpenChamberControlService } from './lib/openchamber-control/service.js';
+import { createThemeControl } from './lib/openchamber-control/theme-control.js';
 import { createPluginNotificationEmitter } from './lib/notifications/emit-route.js';
 import { OpenChamberControlError } from './lib/openchamber-control/error.js';
 import { createSessionLinker } from './lib/openchamber-sessions/session-link.js';
@@ -1920,11 +1921,10 @@ const openChamberControlService = createOpenChamberControlService({
     }
     return delivered;
   },
-  // Each window applies the theme itself; the open streams are the count.
-  setTheme: (request) => {
-    broadcastOpenChamberUiEvent({ type: 'openchamber:theme-set-request', properties: request });
-    return uiOpenChamberEventClients.size;
-  },
+  themeControl: createThemeControl({
+    getClients: () => uiOpenChamberEventClients,
+    writeEvent: writeSseEvent,
+  }),
   isKnowledgeToolEnabled: async () => {
     const settings = await readSettingsFromDiskMigrated().catch(() => null);
     return settings?.agentKnowledgeToolEnabled !== false;

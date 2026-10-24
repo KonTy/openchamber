@@ -13,5 +13,8 @@ test('manifests combine after partial build failures while publication stays str
     "${{ !cancelled() && needs.create-release.result == 'success' }}",
   );
   // Skipped jobs count as done; any failure still stops the release.
-  assert.equal(workflow.jobs['finalize-release'].if, "${{ !cancelled() && !failure() }}");
+  assert.equal(
+    workflow.jobs['finalize-release'].if,
+    "${{ github.repository == 'openchamber/openchamber' && !cancelled() && !failure() }}",
+  );
 });

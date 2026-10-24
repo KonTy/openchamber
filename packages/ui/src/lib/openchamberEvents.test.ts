@@ -83,18 +83,20 @@ describe('openchamber events', () => {
     const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
     const events: string[] = [];
     const browserRequests: Array<{ requestId: string; action: string }> = [];
+    const themeRequests: string[] = [];
     const unsubscribe = subscribeOpenchamberEvents((event) => {
       events.push(event.type);
       if (event.type === 'browser-control-request') {
         browserRequests.push({ requestId: event.requestId, action: event.action });
       }
-    });
+      if (event.type === 'theme-control-request') themeRequests.push(event.requestId);
+    }, { themeControl: true });
     try {
       for (let i = 0; i < 20 && requests.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
       // A native EventSource cannot reach this tunnel: its mock has no forwarding path.
       expect(MockEventSource.instances).toHaveLength(0);
       expect(requests).toHaveLength(1);
-      expect(requests[0].path).toBe('/api/openchamber/events?browser=1');
+      expect(requests[0].path).toBe('/api/openchamber/events?browser=1&theme=1');
       expect(requests[0].authorization).toBe('Bearer fixture-token');
       streamController?.enqueue(encoder.encode('data: {"type":"openchamber:event-stream-ready"}\n\n'));
       streamController?.enqueue(encoder.encode('data: {"type":"openchamber:browser-control-'));
@@ -103,12 +105,15 @@ describe('openchamber events', () => {
       for (let i = 0; i < 20 && events.length < 2; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
       expect(events).toEqual(['event-stream-ready', 'browser-control-request']);
       expect(browserRequests).toEqual([{ requestId: 'req-1', action: 'browser.open' }]);
+      streamController?.enqueue(encoder.encode('data: {"type":"openchamber:theme-control-request","properties":{"requestId":"theme-1","connectionId":"window","action":"capabilities"}}\n\n'));
+      for (let i = 0; i < 20 && themeRequests.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(themeRequests).toEqual(['theme-1']);
     } finally {
       unsubscribe();
     }
     expect(requests[0].signal?.aborted).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(events).toEqual(['event-stream-ready', 'browser-control-request']);
+    expect(events).toEqual(['event-stream-ready', 'browser-control-request', 'theme-control-request']);
   });
 
   test('declares browser control on the stream only from a driving host', async () => {
@@ -129,6 +134,36 @@ describe('openchamber events', () => {
       expect(MockEventSource.instances[1].url).toContain('browser=1');
     } finally {
       drivingUnsubscribe();
+    }
+  });
+
+  test('registers theme capability only while a handler is mounted and limits request dispatch to it', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const ordinary: string[] = [];
+    const themes: string[] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => ordinary.push(event.type));
+    const first = MockEventSource.instances.at(-1);
+    const unsubscribeTheme = subscribeOpenchamberEvents((event) => themes.push(event.type), { themeControl: true });
+    try {
+      expect(first?.readyState).toBe(MockEventSource.CLOSED);
+      const source = MockEventSource.instances.at(-1);
+      expect(source?.url).toContain('theme=1');
+      source?.onmessage?.({ data: JSON.stringify({
+        type: 'openchamber:theme-control-request',
+        properties: { requestId: 'probe', connectionId: 'window', action: 'capabilities' },
+      }) });
+      source?.onmessage?.({ data: JSON.stringify({
+        type: 'openchamber:theme-control-request',
+        properties: { requestId: 'invalid-set', connectionId: 'window', action: 'set' },
+      }) });
+      expect(themes).toEqual(['theme-control-request']);
+      expect(ordinary).toEqual([]);
+      unsubscribeTheme();
+      expect(source?.readyState).toBe(MockEventSource.CLOSED);
+      expect(MockEventSource.instances.at(-1)?.url).not.toContain('theme=1');
+    } finally {
+      unsubscribeTheme();
+      unsubscribe();
     }
   });
 

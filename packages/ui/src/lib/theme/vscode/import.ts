@@ -14,7 +14,7 @@ const sourceSchema = z.object({
   description: z.string().max(1024).optional(),
   type: z.enum(['light', 'dark', 'hc', 'hc-black', 'hc-light']).optional(),
   include: z.string().optional(),
-  colors: z.record(z.string(), hex.nullable()).default({}),
+  colors: z.record(z.string(), z.union([hex, z.literal('default')]).nullable()).default({}),
   tokenColors: z.union([z.array(tokenRule), z.string()]).optional(),
   semanticHighlighting: z.boolean().optional(),
   semanticTokenColors: z.record(z.string(), z.union([hex, tokenSettings])).optional(),
@@ -78,7 +78,7 @@ export function importVSCodeTheme(text: string, filename: string): ThemeDefiniti
 
   const colors: Record<string, string> = {};
   for (const [key, color] of Object.entries(source.colors)) {
-    if (color !== null) colors[key] = color;
+    if (color !== null && color !== 'default') colors[key] = color;
   }
   const authoredBackground = colors['editor.background'];
   if (!authoredBackground) throw new ThemeImportError('background');

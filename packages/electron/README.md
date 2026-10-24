@@ -485,3 +485,30 @@ For full repo validation before shipping:
 bun run type-check
 bun run lint
 ```
+
+### Isolated Theme-Control Smoke
+
+Run the packaged Linux application without touching an installed app or its profile:
+
+```bash
+xvfb-run -a node packages/electron/scripts/smoke-theme-control.mjs \
+  --executable /absolute/path/to/linux-unpacked/openchamber \
+  --directory /absolute/path/to/a-new-fixture-directory \
+  --report /absolute/path/to/report.json
+```
+
+The directory must not exist. The smoke creates disposable settings and a UI
+password, chooses the local runtime, signs in through the actual renderer, and
+waits for both windows to reach application readiness before testing. A mounted
+theme handler alone is not application readiness: the first-launch chooser also
+mounts it. Credentials stay inside the fixture and are not included in reports.
+
+Add `--bridge-root /absolute/path/to/smplos-checkout` to execute that checkout's
+unchanged `src/shared/bin/theme-set-openchamber` against fixture-only theme
+registration. It checks Amber → Catppuccin → Amber, exact palette files,
+per-window application acknowledgments and selections, and preferences saved to
+disk. Repeat with `--opaque` and `--framed`: Catppuccin must fail before any
+theme, preferences, settings, or backup write; Amber must still work. The smoke
+also checks anonymous denial, native bearer authentication with a UI password,
+same-ID opacity reloads, missing themes, and rejected zero opacity. It does not
+measure compositor rendering or validate installation and updating.
