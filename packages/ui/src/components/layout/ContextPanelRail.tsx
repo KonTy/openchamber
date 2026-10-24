@@ -485,7 +485,9 @@ export const ContextPanelRail: React.FC = () => {
             type="button"
             aria-label={t('contextRail.configure.open')}
             onClick={() => setIsSurfacesDialogOpen(true)}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:text-foreground"
+            // A 0.7-dimmed muted foreground falls below the essential-icon
+            // contrast floor on opaque canvas backgrounds; use the full tone.
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
           >
             <Icon name="equalizer-2" className="h-[18px] w-[18px]" />
           </button>

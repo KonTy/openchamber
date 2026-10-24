@@ -74,13 +74,16 @@ export const COMPOSER_EDITOR_THEME_SPEC = {
     // measures an empty line. The line keeps its height through CodeMirror's
     // own trailing <br>.
     //
-    // Kebab-case: the theme emits `--surface-muted-foreground`. A camelCased
+    // Kebab-case: the theme emits `--surface-elevated-foreground`. A camelCased
     // name here is an invalid declaration, and since `color` inherits, the
-    // placeholder silently renders at full text brightness instead.
+    // placeholder silently renders at full text brightness instead. The
+    // placeholder paints on the elevated composer surface, where the muted
+    // foreground falls below the normal-text contrast floor in some themes;
+    // it takes the same token as the typed text above it.
     '& .cm-content.cm-composer-empty .cm-line': { position: 'relative' },
     '& .cm-content.cm-composer-empty .cm-line::before': {
         content: 'var(--composer-placeholder)',
-        color: 'var(--surface-muted-foreground)',
+        color: 'var(--surface-elevated-foreground)',
         position: 'absolute',
         insetInlineStart: '0',
         top: '0',
