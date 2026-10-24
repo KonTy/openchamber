@@ -9,8 +9,10 @@ native x64 and arm64 GitHub runners in Ubuntu 22.04 containers. It installs the
 DEB in the disposable build container and exercises authenticated theme
 application and persistence across 2 native windows. A separate Arch container
 builds and installs the x86_64 package from a SHA256-pinned DEB recipe and runs
-the same checks. Each install checks that an existing `/usr/bin/openchamber`
-CLI remains unchanged.
+the same checks. Nobara validation bootstraps genuine Nobara 44 release and
+repository packages on Fedora 44, verifies pinned RPM hashes and signatures,
+then synchronizes and installs through Nobara's signature-checked repositories.
+Each install checks that an existing `/usr/bin/openchamber` CLI remains unchanged.
 
 The Arch package is named `openchamber-desktop`. Its launcher starts
 `/opt/OpenChamber/openchamber`, and its resources identify the package as `arch`.
@@ -22,9 +24,16 @@ Pushes to `work-upstream-theme-integration` build validation artifacts.
 Manual runs can create a draft only from `work-theme-integration-baseline`.
 The workflow verifies the complete inventory, both updater manifests and native
 reports before writing `SHA256SUMS` and source provenance. It never publishes
-the draft automatically. Nobara runtime, isolated AppImage update/shutdown and
-HMR validation remain separate release gates. Container checks do not prove
+the draft automatically. Isolated AppImage update/shutdown and HMR validation
+remain separate release gates. Container checks do not prove
 compositor rendering, host sandbox policy or desktop integration on a real OS.
+
+The theme-control fixture also accepts `--development` instead of
+`--executable`. It runs the normal Electron/HMR launcher with fresh data,
+password authentication, ephemeral API/UI/CDP ports and native alpha explicitly
+enabled. Its second window opens the HMR URL explicitly because the development
+New window command uses the backend's built assets. Both windows must finish
+application bootstrap before the fixture checks theme acknowledgments.
 
 This package owns the native shell: windows, menus, deep links, native notifications, auto-updates, host switching, SSH connections, tunnel helpers, and packaged desktop builds. The web UI and OpenChamber server logic still live in `packages/web` and shared React UI lives in `packages/ui`.
 

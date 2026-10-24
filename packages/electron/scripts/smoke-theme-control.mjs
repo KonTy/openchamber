@@ -5,6 +5,7 @@ import path from 'node:path';
 import { parseArgs, promisify } from 'node:util';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { CdpClient } from '../../../scripts/perf/cdp.mjs';
 
 const { values } = parseArgs({ options: {
@@ -14,9 +15,11 @@ const { values } = parseArgs({ options: {
   framed: { type: 'boolean', default: false },
   opaque: { type: 'boolean', default: false },
   'bridge-root': { type: 'string' },
+  development: { type: 'boolean', default: false },
 } });
-assert(values.executable && values.directory && values.report, 'Supply --executable, --directory and --report');
-await fs.access(path.resolve(values.executable));
+assert(values.directory && values.report, 'Supply --directory and --report');
+assert(Boolean(values.executable) !== values.development, 'Supply either --executable or --development');
+if (values.executable) await fs.access(path.resolve(values.executable));
 const root = path.resolve(values.directory);
 await fs.mkdir(root, { recursive: false });
 const data = path.join(root, 'data');
@@ -51,24 +54,36 @@ const environment = {
   OPENCODE_CONFIG_DIR: path.join(root, 'opencode'),
 };
 if (values.opaque) environment.OPENCHAMBER_TRANSPARENT_WINDOW = '0';
+if (values.development) {
+  environment.OPENCHAMBER_ELECTRON_REMOTE_DEBUGGING_PORT = '0';
+  environment.OPENCHAMBER_HMR_UI_PORT = '0';
+  environment.OPENCHAMBER_HMR_API_PORT = '0';
+  environment.OPENCHAMBER_TRANSPARENT_WINDOW = expectedAlpha ? '1' : '0';
+  environment.OPENCHAMBER_UI_PASSWORD = password;
+}
 await fs.mkdir(environment.HOME, { recursive: true });
 const log = await fs.open(path.join(root, 'native.log'), 'w');
-const child = spawn(path.resolve(values.executable), [
+const appArguments = [
   '--remote-debugging-port=0', '--disable-backgrounding-occluded-windows',
   '--disable-renderer-backgrounding', '--disable-features=MacAppCodeSignClone',
   ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []),
-], { cwd: environment.HOME, env: environment, stdio: ['ignore', log.fd, log.fd] });
+];
+const child = spawn(values.development ? process.execPath : path.resolve(values.executable),
+  values.development ? [fileURLToPath(new URL('./electron-dev.mjs', import.meta.url))] : appArguments,
+  { cwd: environment.HOME, env: environment, stdio: ['ignore', log.fd, log.fd] });
 let startupError;
 const exit = once(child, 'exit').catch((error) => { startupError = error; });
 let client;
 const clients = [];
 const themeResults = [];
 const themeWarnings = [];
+const assetFailures = [];
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (probe, description) => {
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
     if (startupError) throw startupError;
+    assert.equal(assetFailures.length, 0, JSON.stringify(assetFailures));
     assert(child.exitCode === null && child.signalCode === null, 'Isolated app exited during startup');
     const result = await probe();
     if (result) return result;
@@ -84,10 +99,10 @@ const evaluate = async (expression) => {
   return result.result.value;
 };
 const request = (route, body) => evaluate(`(async () => {
-  const base = window.__OPENCHAMBER_API_BASE_URL__;
+  const base = window.__OPENCHAMBER_API_BASE_URL__ || ${values.development ? 'window.location.origin' : 'null'};
   if (!base) return null;
-  const token = window.__OPENCHAMBER_CLIENT_TOKEN__
-    || await window.__OPENCHAMBER_DESKTOP__.invoke('desktop_local_client_token_get');
+  const token = ${values.development ? 'null' : `window.__OPENCHAMBER_CLIENT_TOKEN__
+    || await window.__OPENCHAMBER_DESKTOP__.invoke('desktop_local_client_token_get')`};
   const response = await fetch(new URL(${JSON.stringify(route)}, base), {
     method: ${JSON.stringify(body ? 'POST' : 'GET')},
     headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), 'Content-Type': 'application/json' },
@@ -111,15 +126,26 @@ const checkProbe = (probe, count) => {
   for (const window of probe.body.windows) assert.equal(window.transparentWindow, expectedAlpha);
 };
 const checks = [];
+const isApplicationPage = (page) => page.type === 'page' && !page.url.includes('__splash')
+  && (values.development ? /^http:\/\/127\.0\.0\.1:\d+\//.test(page.url) : page.url.startsWith('openchamber-ui://app'));
 const observe = async (target) => {
   const connection = new CdpClient(target.webSocketDebuggerUrl);
+  const assetRequests = new Map();
   clients.push(connection);
   await connection.connect();
-  connection.on('Network.requestWillBeSent', ({ request }) => {
+  connection.on('Network.requestWillBeSent', ({ request, requestId }) => {
+    if (request.url.startsWith('openchamber-ui://app/assets/')) assetRequests.set(requestId, request.url);
     if (request.url.includes('/api/openchamber/theme/result') && request.postData && themeResults.length < 80) {
       themeResults.push(JSON.parse(request.postData));
     }
   });
+  connection.on('Network.loadingFailed', ({ requestId, errorText, canceled }) => {
+    if (!canceled && assetRequests.has(requestId) && assetFailures.length < 12) {
+      assetFailures.push({ url: assetRequests.get(requestId), errorText });
+    }
+    assetRequests.delete(requestId);
+  });
+  connection.on('Network.loadingFinished', ({ requestId }) => assetRequests.delete(requestId));
   connection.on('Runtime.consoleAPICalled', ({ args }) => {
     for (const argument of args) {
       if (argument.type === 'string' && /theme/i.test(argument.value) && themeWarnings.length < 80) {
@@ -243,12 +269,14 @@ try {
   }, 'the isolated CDP port');
   const target = await until(async () => {
     const pages = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-    return pages.find((page) => page.type === 'page' && page.url.startsWith('openchamber-ui://app') && !page.url.includes('__splash'));
-  }, 'the packaged renderer');
+    return pages.find(isApplicationPage);
+  }, values.development ? 'the HMR renderer' : 'the packaged renderer');
   client = await observe(target);
-  await until(() => evaluate('Boolean(window.__OPENCHAMBER_API_BASE_URL__)'), 'the local runtime bootstrap');
+  await until(() => evaluate(values.development
+    ? 'Boolean(window.__OPENCHAMBER_DESKTOP__)'
+    : 'Boolean(window.__OPENCHAMBER_API_BASE_URL__)'), 'the local runtime bootstrap');
   const denied = await evaluate(`(async () => {
-    const base = window.__OPENCHAMBER_API_BASE_URL__;
+    const base = window.__OPENCHAMBER_API_BASE_URL__ || ${values.development ? 'window.location.origin' : 'null'};
     const response = await fetch(new URL('/api/openchamber/control', base), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'theme.capabilities' }),
@@ -272,16 +300,17 @@ try {
   }, 'the mounted native theme handler');
   checkProbe(probe, 1);
   checks.push('native readiness and capability protocol');
-  await evaluate('window.__OPENCHAMBER_DESKTOP__.invoke("desktop_new_window")');
+  await evaluate(values.development
+    ? 'window.__OPENCHAMBER_DESKTOP__.invoke("desktop_new_window_at_url", { url: window.location.origin })'
+    : 'window.__OPENCHAMBER_DESKTOP__.invoke("desktop_new_window")');
   const two = await until(async () => {
     const response = await control('theme.capabilities');
     return response?.status === 200 && response.body.windows.length === 2 ? response : null;
   }, 'both native handlers');
   checkProbe(two, 2);
   const pages = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  const second = pages.find((page) => page.id !== target.id && page.type === 'page'
-    && page.url.startsWith('openchamber-ui://app') && !page.url.includes('__splash'));
-  assert(second, 'Expected the second packaged native window');
+  const second = pages.find((page) => page.id !== target.id && isApplicationPage(page));
+  assert(second, 'Expected the second native window');
   const secondClient = await observe(second);
   await until(async () => {
     const response = await secondClient.send('Runtime.evaluate', {
@@ -321,6 +350,7 @@ try {
   checks.push('missing themes and zero opacity refused');
   await fs.writeFile(path.resolve(values.report), JSON.stringify({
     platform: process.platform, architecture: process.arch, framed: values.framed,
+    ui: values.development ? 'hmr' : 'bundled',
     nativeTransparency: expectedAlpha, checks, themeResults, themeWarnings, compositorRendering: 'unmeasured',
   }, null, 2) + '\n');
   console.log(`Theme control passed ${checks.length} native checks; transparentWindow=${expectedAlpha}`);
@@ -329,6 +359,9 @@ try {
   for (const connection of clients) {
     const snapshot = await connection.send('Runtime.evaluate', {
       expression: `JSON.stringify({
+        url: window.location.href,
+        ready: window.__openchamberAppReady === true,
+        bodyText: document.body.innerText.slice(0, 1600),
         selectedThemeId: localStorage.getItem('selectedThemeId'),
         themeMode: localStorage.getItem('themeMode'),
         background: getComputedStyle(document.getElementById('root')).getPropertyValue('--surface-background'),
@@ -338,7 +371,7 @@ try {
     windows.push(snapshot.result?.value);
   }
   await fs.writeFile(path.resolve(values.report), JSON.stringify({
-    checks, error: error.message, themeResults, themeWarnings, windows,
+    checks, error: error.message, themeResults, themeWarnings, assetFailures, windows,
   }, null, 2) + '\n');
   throw error;
 } finally {

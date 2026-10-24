@@ -30,7 +30,9 @@ const writeInventory = async (directory) => {
     }
     await fs.writeFile(path.join(directory, manifest), `version: ${version}\nfiles:\n${entries.join('\n')}\n`);
   }
-  for (const arch of ['x64', 'arm64', 'arch']) {
+  await fs.writeFile(path.join(directory, 'nobara-os-release'), 'ID=nobara\nVERSION_ID=44\n');
+  await fs.writeFile(path.join(directory, 'nobara-rpm-versions.txt'), 'nobara-release-44-6.fc44.noarch\n');
+  for (const arch of ['x64', 'arm64', 'arch', 'nobara']) {
     await fs.writeFile(path.join(directory, `theme-control-${arch}.json`), JSON.stringify({
       platform: 'linux', architecture: arch === 'arm64' ? 'arm64' : 'x64', nativeTransparency: true,
       checks: ['two-window application, persistence and same-ID opacity reload', 'missing themes and zero opacity refused'],
@@ -69,7 +71,7 @@ test('complete dual-architecture inventory records exact checksums and remaining
   await writeInventory(directory);
   await verifyForkInventory({ directory, version, sourceCommit });
   const sums = (await fs.readFile(path.join(directory, 'SHA256SUMS'), 'utf8')).trim().split('\n');
-  assert.equal(sums.length, 14);
+  assert.equal(sums.length, 17);
   for (const line of sums) {
     const [checksum, name] = line.split('  ');
     const bytes = await fs.readFile(path.join(directory, name));
@@ -77,7 +79,8 @@ test('complete dual-architecture inventory records exact checksums and remaining
   }
   const provenance = JSON.parse(await fs.readFile(path.join(directory, 'provenance.json'), 'utf8'));
   assert.equal(provenance.sourceCommit, sourceCommit);
-  assert.deepEqual(provenance.externalReleaseGates, ['Nobara runtime', 'AppImage update and shutdown', 'HMR development']);
+  assert.deepEqual(provenance.runtimeUserspaces, ['Ubuntu 22.04', 'Arch Linux', 'Nobara 44']);
+  assert.deepEqual(provenance.externalReleaseGates, ['AppImage update and shutdown', 'HMR development']);
 });
 
 test('inventory rejects a corrupt payload before writing release checksums', async (t) => {

@@ -56,9 +56,9 @@ export const verifyForkInventory = async ({ directory, version, sourceCommit }) 
     });
     expected.push(...artifacts, manifest, `theme-control-${arch}.json`);
   }
-  expected.push('theme-control-arch.json');
+  expected.push('theme-control-arch.json', 'theme-control-nobara.json', 'nobara-os-release', 'nobara-rpm-versions.txt');
   assert.deepEqual((await readdir(directory)).sort(), expected.sort(), 'Release inventory is incomplete or contains unexpected files');
-  for (const arch of ['x64', 'arm64', 'arch']) {
+  for (const arch of ['x64', 'arm64', 'arch', 'nobara']) {
     const result = JSON.parse(await readFile(path.join(directory, `theme-control-${arch}.json`), 'utf8'));
     assert.equal(result.platform, 'linux');
     assert.equal(result.architecture, arch === 'arm64' ? 'arm64' : 'x64');
@@ -67,6 +67,8 @@ export const verifyForkInventory = async ({ directory, version, sourceCommit }) 
     assert(result.checks.includes('missing themes and zero opacity refused'));
     assert.equal(result.error, undefined);
   }
+  assert.match(await readFile(path.join(directory, 'nobara-os-release'), 'utf8'), /^ID=nobara$/m);
+  assert.match(await readFile(path.join(directory, 'nobara-rpm-versions.txt'), 'utf8'), /^nobara-release-44-/m);
   const checksums = [];
   for (const name of expected) {
     const filePath = path.join(directory, name);
@@ -78,7 +80,8 @@ export const verifyForkInventory = async ({ directory, version, sourceCommit }) 
     repository: 'KonTy/openchamber', sourceCommit, version,
     buildUserspace: 'Ubuntu 22.04', architectures: ['x64', 'arm64'],
     archPackage: 'x86_64', compositorRendering: 'unmeasured',
-    externalReleaseGates: ['Nobara runtime', 'AppImage update and shutdown', 'HMR development'],
+    runtimeUserspaces: ['Ubuntu 22.04', 'Arch Linux', 'Nobara 44'],
+    externalReleaseGates: ['AppImage update and shutdown', 'HMR development'],
   }, null, 2)}\n`, { flag: 'wx' });
 };
 

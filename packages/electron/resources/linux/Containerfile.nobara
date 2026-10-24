@@ -1,0 +1,39 @@
+FROM docker.io/library/fedora:44
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN dnf -y install cpio createrepo_c && dnf clean all
+ADD https://use.nobaraproject.org/rolling/nobara-updates/x86_64/Packages/n/nobara-gpg-keys-44-5.noarch.rpm /bootstrap/
+ADD https://use.nobaraproject.org/rolling/nobara-updates/x86_64/Packages/n/nobara-repos-44-5.noarch.rpm /bootstrap/
+ADD https://use.nobaraproject.org/rolling/nobara-updates/x86_64/Packages/n/nobara-release-44-6.fc44.noarch.rpm /bootstrap/
+ADD https://use.nobaraproject.org/rolling/nobara-updates/x86_64/Packages/n/nobara-release-common-44-6.fc44.noarch.rpm /bootstrap/
+ADD https://use.nobaraproject.org/rolling/nobara-updates/x86_64/Packages/n/nobara-release-identity-basic-44-6.fc44.noarch.rpm /bootstrap/
+WORKDIR /bootstrap
+RUN printf '%s\n' \
+      'd306791ec76e9597c6d25be9bb91193c651f9b6e6798ebedcf57880bb7354ac5  nobara-gpg-keys-44-5.noarch.rpm' \
+      '5e8218ab529419593c026a89150cc5bc26bd286590f2cc597eb96362c8da07db  nobara-repos-44-5.noarch.rpm' \
+      '1fc8598399cc5b378b59893e2454483325d1c59e7d96dda8bfd0fe20822debec  nobara-release-44-6.fc44.noarch.rpm' \
+      '0ba52dbec81bf215e298dd9cd8e6427aa7770e19b422dde56ea062501c918c9d  nobara-release-common-44-6.fc44.noarch.rpm' \
+      '6149e0cab7798f98686b9434fcdcc2b8315a4123ea4713a12655781eddb9edd5  nobara-release-identity-basic-44-6.fc44.noarch.rpm' \
+      | sha256sum --check && \
+    mkdir keys && cd keys && \
+    rpm2cpio ../nobara-gpg-keys-44-5.noarch.rpm | cpio -id --quiet
+RUN rpm --import keys/etc/pki/rpm-gpg/* && \
+    rpmkeys --checksig ./*.rpm && \
+    createrepo_c . && \
+    dnf -y --releasever=44 --repofrompath=bootstrap,file:///bootstrap \
+      --disablerepo='*' --enablerepo=bootstrap --setopt=bootstrap.gpgcheck=1 \
+      swap --allowerasing fedora-release-identity-container 'nobara-release*' && \
+    dnf -y --releasever=44 --repofrompath=bootstrap,file:///bootstrap \
+      --disablerepo='*' --enablerepo=bootstrap --setopt=bootstrap.gpgcheck=1 \
+      install nobara-repos nobara-gpg-keys
+RUN dnf -y --disablerepo='*' --enablerepo=nobara --enablerepo=nobara-updates \
+      --setopt=nobara.skip_if_unavailable=False \
+      --setopt=nobara-updates.skip_if_unavailable=False distro-sync && \
+    dnf -y --disablerepo='*' --enablerepo=nobara --enablerepo=nobara-updates \
+      --setopt=nobara.skip_if_unavailable=False \
+      --setopt=nobara-updates.skip_if_unavailable=False install \
+      nodejs gtk3 nss alsa-lib libXScrnSaver libXtst libnotify libsecret \
+      libxkbcommon mesa-libgbm xdg-utils xorg-x11-server-Xvfb xorg-x11-xauth && \
+    dnf clean all && \
+    grep -qx 'ID=nobara' /etc/os-release && rpm -q nobara-release nobara-repos
+WORKDIR /tmp

@@ -2,7 +2,7 @@ name: Fork Linux release
 
 on:
   push:
-    branches: [work-upstream-theme-integration]
+    branches: [work-upstream-theme-integration, work-theme-integration-baseline]
   workflow_dispatch:
     inputs:
       draft_release:
@@ -51,7 +51,7 @@ jobs:
         run: |
           apt-get update -qq
           apt-get install -y --no-install-recommends git ca-certificates curl \
-            build-essential python3 rpm xz-utils zstd xvfb xauth \
+            build-essential python3 rpm unzip xz-utils zstd xvfb xauth \
             libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libxtst6 \
             libsecret-1-0 libnotify4 libxkbcommon0 xdg-utils
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -187,8 +187,53 @@ jobs:
           path: release-files/*
           if-no-files-found: error
 
+  nobara:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: fork-linux-x64
+          path: native
+      - name: Build signature-checked Nobara 44 userspace
+        run: |
+          docker build --file packages/electron/resources/linux/Containerfile.nobara \
+            --tag openchamber-nobara packages/electron/resources/linux
+      - name: Install and exercise the Nobara RPM
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          export VERSION
+          mkdir release-files
+          docker run --rm --env VERSION \
+            --volume "$PWD:/source:ro" --volume "$PWD/native:/artifacts:ro" \
+            --volume "$PWD/release-files:/results" openchamber-nobara bash -c '
+              set -euo pipefail
+              grep -qx "ID=nobara" /etc/os-release
+              printf "#!/bin/sh\nexit 0\n" > /usr/bin/openchamber
+              chmod 755 /usr/bin/openchamber
+              CLI_SHA=$(sha256sum /usr/bin/openchamber)
+              dnf -y --disablerepo="*" --enablerepo=nobara --enablerepo=nobara-updates \
+                install "/artifacts/OpenChamber-$VERSION-linux-x86_64.rpm"
+              test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"
+              xvfb-run -a node /source/packages/electron/scripts/smoke-theme-control.mjs \
+                --executable /opt/OpenChamber/openchamber \
+                --directory /tmp/theme-control --report /results/theme-control-nobara.json
+              cp /etc/os-release /results/nobara-os-release
+              rpm -q nobara-release nobara-repos nobara-gpg-keys glibc gtk3 nss \
+                > /results/nobara-rpm-versions.txt
+            '
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fork-linux-nobara
+          path: release-files/*
+          if-no-files-found: error
+
   inventory:
-    needs: [build, arch]
+    needs: [build, arch, nobara]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -234,4 +279,4 @@ jobs:
           test "$SOURCE" = "$GITHUB_SHA"
           gh release create "v$VERSION" --draft --target "$SOURCE" \
             --title "OpenChamber $VERSION Linux" \
-            --notes "Linux fork build from $SOURCE. Publication awaits Nobara runtime, AppImage update/shutdown and HMR validation." ./*
+            --notes "Linux fork build from $SOURCE. Ubuntu, Arch and Nobara userspace checks are attached. Publication requires separate AppImage update/shutdown and HMR evidence. Host compositor and sandbox policy remain unverified." ./*

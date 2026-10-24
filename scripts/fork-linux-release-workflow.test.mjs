@@ -38,3 +38,17 @@ test('both distro installs preserve an existing CLI and run two-window native va
     }
   }
 });
+
+test('Nobara validation installs its real release packages and preserves signature checks', () => {
+  const containerfile = fs.readFileSync(new URL('../packages/electron/resources/linux/Containerfile.nobara', import.meta.url), 'utf8');
+  assert(containerfile.includes('sha256sum --check'));
+  assert(containerfile.includes('rpmkeys --checksig'));
+  assert(containerfile.includes('--setopt=bootstrap.gpgcheck=1'));
+  assert(containerfile.includes('swap --allowerasing fedora-release-identity-container'));
+  assert(!containerfile.includes('--nogpgcheck'));
+  assert(!containerfile.includes('gpgcheck=0'));
+  assert.deepEqual(workflow.jobs.inventory.needs, ['build', 'arch', 'nobara']);
+  const install = workflow.jobs.nobara.steps.find((step) => step.name === 'Install and exercise the Nobara RPM');
+  assert(install.run.includes('test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"'));
+  assert(install.run.includes('scripts/smoke-theme-control.mjs'));
+});
