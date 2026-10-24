@@ -177,6 +177,7 @@ export const registerScheduledTaskRoutes = (app, dependencies) => {
     // the same server at once. Recording it on the connection keeps the answer
     // current without any enable/disable setting to go stale.
     res.openchamberBrowserCapable = req.query?.browser === '1';
+    res.openchamberThemeCapable = req.query?.theme === '1';
     // Names this connection, so what a client asks to follow lives exactly as
     // long as the connection that receives its changes.
     res.openchamberConnectionId = randomUUID();

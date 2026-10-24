@@ -46,7 +46,7 @@ test('a status section without a project opens its panel under the chat, as the 
   const theme = getDefaultTheme(false);
   const themeContext: ThemeContextValue = {
     currentTheme: theme, availableThemes: [theme], customThemeIds: [], setTheme: () => {}, customThemesLoading: false,
-    reloadCustomThemes: async () => {}, importTheme: async () => theme, deleteImportedTheme: async () => {},
+    reloadCustomThemes: async () => [theme], importTheme: async () => theme, deleteImportedTheme: async () => {},
     isSystemPreference: false, setSystemPreference: () => {}, themeMode: 'light', setThemeMode: () => {},
     lightThemeId: theme.metadata.id, darkThemeId: theme.metadata.id, setLightThemePreference: () => {}, setDarkThemePreference: () => {},
   };

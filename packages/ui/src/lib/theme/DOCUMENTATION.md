@@ -18,6 +18,21 @@ retain their exact authored background. Bodies and gutters use the same fill.
 
 A theme can set `config.backgroundOpacity`, above 0 up to 1. `cssGenerator.apply(theme, backgroundOpacity)` takes it when it is below 1 and the desktop window was created transparent (`isDesktopTransparentWindow`, `OPENCHAMBER_TRANSPARENT_WINDOW` in `packages/electron/README.md`); `ThemeSystemContext` passes it only then, and any other window is opaque, as with a theme that has no such field. The extra block lowers the background of `#root` and the docked panel cards and nothing else, so text keeps the theme's opaque foreground. Tailwind writes `text-*/NN` as a `color-mix` toward `transparent`; the root `postcss.config.js` rewrites that to mix toward `--oc-text-backdrop`, which the block sets to the opaque theme background. With the variable unset the CSS is unchanged for every other runtime. Surfaces that paint their own color (the terminal canvas, the diff viewer, the file editor) stay opaque, and portals mount outside `#root` and keep the theme fill. Tailwind `opacity-NN` utilities still make their text translucent.
 
+### Why preference publication is separate from palette rendering
+
+Runtime-scoped selection preferences are published only when those preferences
+or their runtime owner change. Reloading a palette still updates splash colors,
+but must not republish the old selection: another window may already have
+selected the next theme while this window was loading its colors.
+
+### Why dropdown picks switch modes only for a hidden variant
+
+Picking a light or dark theme must make that pick visible. When its variant is
+already showing, the current mode stays unchanged, including System following
+the OS. Picking the other variant switches to Light or Dark; choosing System
+again restores OS following. This avoids both an invisible selection and an
+unnecessary loss of System mode.
+
 For authoring and supported fields, see `docs/CUSTOM_THEMES.md`. Surface semantics belong to `.agents/skills/theme-system/references/tokens-and-examples.md`.
 
 `scripts/port-opencode-theme.ts` is the maintainer's OpenCode App converter,
@@ -139,6 +154,8 @@ General semantic selectors override general TextMate rules unless semantic
 highlighting is disabled. Language-specific selectors do not become global colors.
 Missing code categories inherit code text, not the default OpenChamber syntax.
 `include` and external token files fail explicitly instead of guessing missing data.
+Literal `default` UI colors are treated as unset, as in VS Code. A missing
+editor background still fails the import because it is required to resolve the palette.
 
 The provider persists imports through `POST /api/config/themes` before adding them
 to its runtime-scoped library. A successful save invalidates older reloads. Runtime

@@ -72,7 +72,7 @@ test('theme imports survive older reloads and yield to newer choices and runtime
     await act(async () => root.render(<ThemeSystemProvider><Probe /></ThemeSystemProvider>));
     await act(async () => resolveNext(reads, Response.json({ themes: [] })));
 
-    let oldReload = Promise.resolve();
+    let oldReload: ReturnType<ThemeContextValue['reloadCustomThemes']> = Promise.resolve(null);
     await act(async () => { oldReload = current().reloadCustomThemes(); });
     const { result: pendingImport } = await beginImport();
     await act(async () => {
@@ -115,7 +115,7 @@ test('theme imports survive older reloads and yield to newer choices and runtime
     const { result: invalidDelete } = await deleteTheme();
     await act(async () => { resolveNext(deletes, Response.json({ success: false })); await invalidDelete; });
     expect(container.textContent).toBe(newest.metadata.id);
-    let staleReload = Promise.resolve();
+    let staleReload: ReturnType<ThemeContextValue['reloadCustomThemes']> = Promise.resolve(null);
     await act(async () => { staleReload = current().reloadCustomThemes(); });
     const { result: deleted } = await deleteTheme();
     await act(async () => { resolveNext(deletes, Response.json({ success: true })); await deleted; });

@@ -2,6 +2,46 @@
 
 Electron desktop runtime for OpenChamber on macOS, Windows, and Linux.
 
+## Fork Linux releases
+
+The `Fork Linux release` workflow builds AppImage, DEB and RPM artifacts on
+native x64 and arm64 GitHub runners in Ubuntu 22.04 containers. It installs the
+DEB in the disposable build container and exercises authenticated theme
+application and persistence across 2 native windows. A separate Arch container
+builds and installs the x86_64 package from a SHA256-pinned DEB recipe and runs
+the same checks. Nobara validation bootstraps genuine Nobara 44 release and
+repository packages on Fedora 44, verifies pinned RPM hashes and signatures,
+then synchronizes and installs through Nobara's signature-checked repositories.
+Each install checks that an existing `/usr/bin/openchamber` CLI remains unchanged.
+
+The Arch package is named `openchamber-desktop`. Its launcher starts
+`/opt/OpenChamber/openchamber`, and its resources identify the package as `arch`.
+Update it through pacman or rebuild the published `PKGBUILD`; the application's
+DEB/RPM updater does not support this format. The generated recipe pins both
+the DEB checksum and the source commit's MIT license.
+
+Pushes to `work-upstream-theme-integration` build validation artifacts.
+Manual runs can create a draft only from `work-theme-integration-baseline`.
+The workflow verifies the complete inventory, both updater manifests and native
+reports before writing `SHA256SUMS` and source provenance. It never publishes
+the draft automatically. Isolated AppImage update/shutdown and HMR validation
+remain separate release gates. Container checks do not prove
+compositor rendering, host sandbox policy or desktop integration on a real OS.
+The runtime containers allocate 1 GiB of shared memory. Docker and Podman's
+64 MiB default exhausts Chromium's asset-loading buffers during packaged startup
+and leaves the renderer blank with `ERR_UNEXPECTED` asset failures.
+
+The ARM64 AppImage launcher also requires unversioned `libz.so`. On Ubuntu,
+install `zlib1g-dev` alongside the FUSE runtime before running that AppImage.
+The DEB and RPM launchers do not share this AppImage prerequisite.
+
+The theme-control fixture also accepts `--development` instead of
+`--executable`. It runs the normal Electron/HMR launcher with fresh data,
+password authentication, ephemeral API/UI/CDP ports and native alpha explicitly
+enabled. Its second window opens the HMR URL explicitly because the development
+New window command uses the backend's built assets. Both windows must finish
+application bootstrap before the fixture checks theme acknowledgments.
+
 This package owns the native shell: windows, menus, deep links, native notifications, auto-updates, host switching, SSH connections, tunnel helpers, and packaged desktop builds. The web UI and OpenChamber server logic still live in `packages/web` and shared React UI lives in `packages/ui`.
 
 ## How It Runs
@@ -485,3 +525,30 @@ For full repo validation before shipping:
 bun run type-check
 bun run lint
 ```
+
+### Isolated Theme-Control Smoke
+
+Run the packaged Linux application without touching an installed app or its profile:
+
+```bash
+xvfb-run -a node packages/electron/scripts/smoke-theme-control.mjs \
+  --executable /absolute/path/to/linux-unpacked/openchamber \
+  --directory /absolute/path/to/a-new-fixture-directory \
+  --report /absolute/path/to/report.json
+```
+
+The directory must not exist. The smoke creates disposable settings and a UI
+password, chooses the local runtime, signs in through the actual renderer, and
+waits for both windows to reach application readiness before testing. A mounted
+theme handler alone is not application readiness: the first-launch chooser also
+mounts it. Credentials stay inside the fixture and are not included in reports.
+
+Add `--bridge-root /absolute/path/to/smplos-checkout` to execute that checkout's
+unchanged `src/shared/bin/theme-set-openchamber` against fixture-only theme
+registration. It checks Amber → Catppuccin → Amber, exact palette files,
+per-window application acknowledgments and selections, and preferences saved to
+disk. Repeat with `--opaque` and `--framed`: Catppuccin must fail before any
+theme, preferences, settings, or backup write; Amber must still work. The smoke
+also checks anonymous denial, native bearer authentication with a UI password,
+same-ID opacity reloads, missing themes, and rejected zero opacity. It does not
+measure compositor rendering or validate installation and updating.

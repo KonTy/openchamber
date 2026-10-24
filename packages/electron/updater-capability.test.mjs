@@ -26,6 +26,13 @@ test('accepts installed .deb and .rpm packages', () => {
   }
 });
 
+test('Arch packages cannot enter the DEB or RPM updater path', () => {
+  assert.throws(
+    () => assertUpdaterCapability({ platform: 'linux', packaged: true, appImagePath: '', packageType: 'arch' }),
+    /Updates require the packaged Linux AppImage/,
+  );
+});
+
 test('rejects missing and non-writable AppImages with actionable errors', () => {
   assert.throws(
     () => assertUpdaterCapability({

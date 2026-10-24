@@ -2,6 +2,15 @@ import express from 'express';
 import { asControlError } from './error.js';
 
 export const registerOpenChamberControlRoutes = (app, { controlService }) => {
+  app.post('/api/openchamber/theme/result', express.json({ limit: '4kb' }), (req, res) => {
+    try {
+      return res.json(controlService.answerTheme(req.body));
+    } catch (error) {
+      const controlError = asControlError(error, 'Could not confirm the theme request');
+      return res.status(controlError.statusCode).json({ error: controlError.message });
+    }
+  });
+
   app.post('/api/openchamber/control', express.json({ limit: '1mb' }), async (req, res) => {
     const controller = new AbortController();
     const abortOnDisconnect = () => {

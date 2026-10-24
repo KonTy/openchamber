@@ -11,7 +11,7 @@ other.
 
 - `service.js` validates and executes the fixed project, model, session, and
   scheduled-task action allowlist. `actions.js` marks CLI-only actions with
-  `agentExposed: false` (currently `schedule.status` and `theme.set`); the
+  `agentExposed: false` (including `schedule.status`, `theme.set` and `theme.capabilities`); the
   agent tool consumes the filtered `OPENCHAMBER_AGENT_TOOL_*` exports.
   `schedule.toggle` requires the `disabled` boolean and replaces separate
   enable/disable actions; its
@@ -224,22 +224,49 @@ other.
   zero is a 503, never a claimed success. Paths outside the workspace are
   allowed on purpose: screenshots and recordings often land in a temp
   directory, and the viewer already reads such files.
-- `theme.set` switches every connected window to the theme `id`, for a
-  script that keeps the app in step with the desktop. It is CLI-only: the
-  agent has no reason to restyle the user's app. The service checks that an id
-  is present and hands `{ id }` to the injected `setTheme`, which `index.js`
-  writes to every UI control stream as `openchamber:theme-set-request` and
-  answers with the number of open streams; zero is a 503. Each window runs
-  `useExternalThemeSwitch`. It loads the custom themes again, so a theme file
-  written just before the call is found, and then calls the theme context's
-  `setTheme`, which saves the choice under the window's own surface as if the
-  user had picked it. How see-through the window is belongs to the theme
-  (`config.backgroundOpacity`, see `packages/ui/src/lib/theme/DOCUMENTATION.md`);
-  the request carries no opacity. The server does not know the theme ids: a
-  window ignores an id it has no theme for, and the call still reports the
-  windows reached. VS Code and
-  the mobile app do not follow it: VS Code has no event stream and the mobile
-  app does not mount the hook.
+- `theme.capabilities` and `theme.set` are authenticated, CLI-only control
+  actions. `theme-control.js` waits for replies from a snapshot of connected
+  streams whose mounted theme handler advertises `theme=1`. Every reply
+  matches a request UUID and connection ID. Unregistered, repeated and
+  expired replies cannot complete a request. The deadline is 10 seconds.
+  Concurrent sets are refused with 409; no handler is 503; renderer refusal
+  or a mismatched reply is 422; incomplete acknowledgment is 504.
+  A set failure carries `partial: true` and `partialAction: "theme.set"`:
+  some windows or settings may already have changed. No rollback is promised.
+- `theme.capabilities` is read-only and returns
+  `{protocolVersion:1, customThemes:true, backgroundOpacity:true,
+  opacityRange:{minExclusive:0,max:1}, ackTimeoutMs:10000,
+  windows:[{connectionId,transparentWindow}]}`. Native readiness comes from
+  each renderer's preload flag, backed by its native window construction.
+  Framed, unsupported and browser windows report false. This flag establishes
+  native alpha support; compositor rendering still needs visual verification.
+- `theme.set` accepts `{id}` and returns
+  `{id,delivered,applied:[{connectionId,themeId,backgroundOpacity,transparentWindow}]}`.
+  Success requires every targeted handler to reload valid custom themes,
+  resolve the ID, commit the selected theme and confirm the shared settings
+  writer succeeded. A missing ID or failed reload/save is explicit failure.
+  A concurrent selection of the same target from another window is accepted;
+  a different choice made during reload or persistence is not overwritten.
+  Opacity belongs to `config.backgroundOpacity`, strictly above 0 through 1;
+  opaque windows report effective opacity 1. Existing clients can keep reading
+  `id` and `delivered`. New renderers still accept legacy broadcast requests,
+  whose older server provides no persistence acknowledgment.
+- The result callback is authenticated
+  `POST /api/openchamber/theme/result`, with a 4 KB JSON limit. Full desktop
+  and web App windows mount the handler. VS Code has no server control stream;
+  hosted and Capacitor mobile layouts and Mini Chat do not register a handler.
+  Scripts that write theme files first probe capabilities, require a nonempty
+  window list and check native readiness for opacity below 1. They compare
+  the applied connection IDs, requested theme ID and effective opacity with
+  their probe. A connection change or partial result leaves application
+  unconfirmed. The OS bridge uses a 15-second HTTP timeout.
+
+### Why theme changes wait for every registered handler
+
+Broadcast delivery could report success after a renderer ignored an unknown
+theme or failed to save its selection. Correlated replies make those failures
+visible without changing unrelated control actions or requiring a server-owned
+theme selection. Each renderer retains its existing settings and theme ownership.
 - `browser.capture` writes its image on the server, into
   `.openchamber/screenshots/` under the scoped project directory, and returns
   the project-relative path rather than the image bytes. The client that took

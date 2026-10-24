@@ -94,11 +94,15 @@ const SortableChip: React.FC<{
                 {...attributes}
                 {...listeners}
                 onClick={() => onSubmit(item)}
-                className="group inline-flex h-6 touch-none select-none items-center gap-1.5 rounded-full border border-border/60 px-2.5 typography-meta text-muted-foreground transition-colors hover:bg-[var(--interactive-hover)] hover:text-foreground"
+                // The pill paints on an elevated fill, so its text takes the
+                // elevated-surface foreground token rather than the canvas
+                // foreground. Slightly dimmed at rest, brightening to full on
+                // hover for a visible paint change.
+                className="inline-flex h-6 touch-none select-none items-center gap-1.5 rounded-full border border-border/60 px-2.5 typography-meta text-card-foreground/90 transition-colors hover:text-card-foreground"
                 style={chipStyle}
                 title={item.shared ? t('chat.draftStarters.sharedTitle') : undefined}
             >
-                <Icon name={item.icon} className="h-3 w-3 shrink-0 opacity-70 transition-opacity group-hover:opacity-100" />
+                <Icon name={item.icon} className="h-3 w-3 shrink-0" />
                 <span className="whitespace-nowrap">{item.label}</span>
             </button>
             {onToggleShared && !hideRemove ? (

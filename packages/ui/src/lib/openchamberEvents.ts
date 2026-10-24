@@ -111,6 +111,15 @@ type SessionFoldersChangedEvent = { type: 'session-folders-changed' } & z.infer<
 
 const themeSetRequestSchema = z.object({ id: z.string().min(1) });
 type ThemeSetRequestEvent = { type: 'theme-set-request' } & z.infer<typeof themeSetRequestSchema>;
+const themeControlRequestSchema = z.object({
+  requestId: z.string().min(1),
+  connectionId: z.string().min(1),
+}).and(z.discriminatedUnion('action', [
+  z.object({ action: z.literal('capabilities') }),
+  z.object({ action: z.literal('set'), id: z.string().min(1) }),
+]));
+export type ThemeControlRequest = z.infer<typeof themeControlRequestSchema>;
+type ThemeControlRequestEvent = { type: 'theme-control-request' } & ThemeControlRequest;
 
 /**
  * The extension chosen as browser provider can no longer serve (paused,
@@ -256,6 +265,7 @@ type OpenChamberEvent =
   | ProjectContextChangedEvent
   | SessionFoldersChangedEvent
   | ThemeSetRequestEvent
+  | ThemeControlRequestEvent
   | AgentMemoryChangedEvent;
 type Listener = (event: OpenChamberEvent) => void;
 
@@ -272,6 +282,7 @@ let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempt = 0;
 let runtimeChangeUnsubscribe: (() => void) | null = null;
 const listeners = new Set<Listener>();
+const themeControlListeners = new Set<Listener>();
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -324,13 +335,15 @@ const cleanupSource = () => {
   eventSource = null;
 };
 
-const connectRelay = (canControlBrowser: boolean) => {
+type EventStreamQuery = { browser?: string; theme?: string };
+
+const connectRelay = (query: EventStreamQuery) => {
   const controller = new AbortController();
   relayAbortController = controller;
   void (async () => {
     try {
       const response = await runtimeFetch('/api/openchamber/events', {
-        query: canControlBrowser ? { browser: '1' } : undefined,
+        query,
         headers: { Accept: 'text/event-stream' },
         signal: controller.signal,
       });
@@ -558,6 +571,12 @@ const dispatchFromEnvelope = (envelope: { type: string; properties: unknown }) =
     return;
   }
 
+  if (envelope.type === 'openchamber:theme-control-request') {
+    const parsed = themeControlRequestSchema.safeParse(envelope.properties);
+    if (parsed.success) for (const listener of themeControlListeners) listener({ type: 'theme-control-request', ...parsed.data });
+    return;
+  }
+
   if (envelope.type === 'openchamber:agent-memory-changed') {
     const properties = getEventProperties(envelope.properties);
     const scope = properties?.scope === 'project' ? 'project' : 'global';
@@ -679,14 +698,17 @@ const connect = () => {
   // driven, and the agent tool needs to know which it is talking to without a
   // setting anyone has to remember to change.
   const canControlBrowser = canDriveBrowserPage();
+  const query: EventStreamQuery = {};
+  if (canControlBrowser) query.browser = '1';
+  if (themeControlListeners.size) query.theme = '1';
   if (isRelayModeActive()) {
-    connectRelay(canControlBrowser);
+    connectRelay(query);
     return;
   }
   if (typeof EventSource !== 'function') return;
   const source = new EventSource(getRuntimeUrlResolver().sse(
     '/api/openchamber/events',
-    canControlBrowser ? { browser: '1' } : undefined,
+    query,
   ));
   source.onopen = () => {
     if (eventSource !== source) return;
@@ -726,17 +748,23 @@ const cleanupRuntimeChangeSubscription = () => {
   runtimeChangeUnsubscribe = null;
 };
 
-export const subscribeOpenchamberEvents = (listener: Listener): (() => void) => {
+export const subscribeOpenchamberEvents = (listener: Listener, options: { themeControl?: boolean } = {}): (() => void) => {
   // VS Code runs OpenCode through its bridge, not the OpenChamber server that
   // owns this stream. Opening it here retries against vscode-webview:// forever.
   if (isVSCodeRuntime()) return () => undefined;
 
   listeners.add(listener);
+  if (options.themeControl) {
+    if (themeControlListeners.size === 0) cleanupSource();
+    themeControlListeners.add(listener);
+  }
   ensureRuntimeChangeSubscription();
   connect();
 
   return () => {
     listeners.delete(listener);
+    const removedThemeHandler = themeControlListeners.delete(listener);
+    if (removedThemeHandler && themeControlListeners.size === 0) cleanupSource();
     if (listeners.size === 0) {
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
@@ -746,6 +774,8 @@ export const subscribeOpenchamberEvents = (listener: Listener): (() => void) => 
       reconnectAttempt = 0;
       cleanupSource();
       cleanupRuntimeChangeSubscription();
+    } else if (removedThemeHandler && themeControlListeners.size === 0) {
+      connect();
     }
   };
 };

@@ -407,7 +407,7 @@ const renderModelControls = async (props: React.ComponentProps<typeof ModelContr
     isSystemPreference: false, themeMode: 'dark', lightThemeId: 'openchamber-light', darkThemeId: 'openchamber-dark',
     setTheme: () => undefined, setSystemPreference: () => undefined, setThemeMode: () => undefined,
     setLightThemePreference: () => undefined, setDarkThemePreference: () => undefined,
-    reloadCustomThemes: async () => undefined, importTheme: async () => theme, deleteImportedTheme: async () => undefined,
+    reloadCustomThemes: async () => [theme], importTheme: async () => theme, deleteImportedTheme: async () => undefined,
   };
   await act(async () => root.render(
     <ThemeSystemContext.Provider value={themeContext}>

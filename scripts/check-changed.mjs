@@ -9,8 +9,8 @@
 // Totals are per rule over the whole change, so code moved between files
 // (ten private copies of a check folded into one shared helper) is not new.
 //
-// The base is where the branch left origin/main, so the comparison covers
-// uncommitted edits and commits not yet in main alike.
+// The base is where the branch left the fork's maintained integration branch,
+// covering uncommitted edits and commits not yet integrated alike.
 //
 // Usage: bun run check:changed [-- --base <ref>]
 
@@ -31,7 +31,7 @@ const git = (args) => execFileSync('git', args, {
 const readBase = (argv) => {
   const index = argv.indexOf('--base');
   if (index !== -1 && argv[index + 1]) return argv[index + 1];
-  return git(['merge-base', 'HEAD', 'origin/main']).trim();
+  return git(['merge-base', 'HEAD', 'origin/work-theme-integration-baseline']).trim();
 };
 
 const listChangedFiles = (base) => {

@@ -71,7 +71,7 @@ test('a status frame keeps subscriptions and storage alive while project changes
   const theme = getDefaultTheme(false);
   const themeContext: ThemeContextValue = {
     currentTheme: theme, availableThemes: [theme], customThemeIds: [], setTheme: () => {}, customThemesLoading: false,
-    reloadCustomThemes: async () => {}, importTheme: async () => theme, deleteImportedTheme: async () => {},
+    reloadCustomThemes: async () => [theme], importTheme: async () => theme, deleteImportedTheme: async () => {},
     isSystemPreference: false, setSystemPreference: () => {}, themeMode: 'light', setThemeMode: () => {},
     lightThemeId: theme.metadata.id, darkThemeId: theme.metadata.id, setLightThemePreference: () => {}, setDarkThemePreference: () => {},
   };
@@ -436,7 +436,7 @@ test('a project-required status section reports absent without the actual Work S
   const theme = getDefaultTheme(false);
   const themeContext: ThemeContextValue = {
     currentTheme: theme, availableThemes: [theme], customThemeIds: [], setTheme: () => {}, customThemesLoading: false,
-    reloadCustomThemes: async () => {}, importTheme: async () => theme, deleteImportedTheme: async () => {},
+    reloadCustomThemes: async () => [theme], importTheme: async () => theme, deleteImportedTheme: async () => {},
     isSystemPreference: false, setSystemPreference: () => {}, themeMode: 'light', setThemeMode: () => {},
     lightThemeId: theme.metadata.id, darkThemeId: theme.metadata.id, setLightThemePreference: () => {}, setDarkThemePreference: () => {},
   };

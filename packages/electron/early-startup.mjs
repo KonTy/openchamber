@@ -26,6 +26,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createShellEnvironmentLoader } from './shell-environment.mjs';
 import { isSplashColor } from './remote-page-policy.mjs';
+import { shouldUseLinuxTransparency } from './linux-window-transparency.mjs';
 import { clearAppImageArgv0FromProcessEnv } from '@openchamber/web/server/lib/inherited-env.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -434,12 +435,14 @@ export const usesFramelessChrome = () => (
   process.platform === 'win32' || (process.platform === 'linux' && !usesLinuxNativeFrame())
 );
 
-// OPENCHAMBER_TRANSPARENT_WINDOW=1 gives the frameless Linux window an alpha
-// channel, so a theme can paint its background below full opacity. Electron
-// fixes this at window creation; without the variable the window is opaque.
-export const usesTransparentWindow = () => (
-  process.platform === 'linux' && process.env.OPENCHAMBER_TRANSPARENT_WINDOW === '1' && usesFramelessChrome()
-);
+export const usesTransparentWindow = () => shouldUseLinuxTransparency({
+  platform: process.platform,
+  frameless: usesFramelessChrome(),
+  packaged: app.isPackaged,
+  requested: process.env.OPENCHAMBER_TRANSPARENT_WINDOW,
+  // Packaged bundles define this constant; development also runs from source.
+  forkDefault: app.isPackaged && __OPENCHAMBER_FORK_LINUX_TRANSPARENCY__,
+});
 
 export const buildMainWindowOptions = ({ bounds, backgroundColor, additionalArguments }) => {
   const frameless = usesFramelessChrome();

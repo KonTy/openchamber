@@ -231,8 +231,7 @@ export const createOpenChamberControlService = (dependencies) => {
     onPageWaitChange = () => {},
     // Puts a plan in front of the user; answers how many windows it reached.
     showPlan = null,
-    // Tells every window to switch theme; answers how many it reached.
-    setTheme = null,
+    themeControl = null,
     // Delivers a dispatched session's result back to the session that asked
     // (`returnResult`); absent means the server cannot offer it.
     dispatchResults = null,
@@ -857,13 +856,15 @@ export const createOpenChamberControlService = (dependencies) => {
           sessionId: asNonEmptyString(options.contextSessionId),
         });
       }
+      if (action === 'theme.capabilities') {
+        if (!themeControl) throw new OpenChamberControlError('Theme control is not available on this server', 503);
+        return themeControl.capabilities({ signal: options.signal });
+      }
       if (action === 'theme.set') {
         const id = asNonEmptyString(input.id);
         if (!id) throw new OpenChamberControlError('id is required for theme.set', 400);
-        if (!setTheme) throw new OpenChamberControlError('Theme switching is not available on this server', 503);
-        const delivered = setTheme({ id });
-        if (delivered === 0) throw new OpenChamberControlError('No OpenChamber window is connected to switch', 503);
-        return { id, delivered };
+        if (!themeControl) throw new OpenChamberControlError('Theme switching is not available on this server', 503);
+        return themeControl.set(id, { signal: options.signal });
       }
       if (action === 'projects.list') return { projects: await projects() };
       if (action === 'models.list') return models();
@@ -1027,5 +1028,13 @@ export const createOpenChamberControlService = (dependencies) => {
   // id and the directory is resolved here, where it is authoritative.
   // `answerPage` is the chat's side of a page that waits (render.page with
   // awaitAnswer).
-  return { execute, resolveSessionDirectory, answerPage: pageAnswers.answer };
+  return {
+    execute,
+    resolveSessionDirectory,
+    answerPage: pageAnswers.answer,
+    answerTheme: (input) => {
+      if (!themeControl) throw new OpenChamberControlError('Theme control is not available on this server', 503);
+      return themeControl.answer(input);
+    },
+  };
 };

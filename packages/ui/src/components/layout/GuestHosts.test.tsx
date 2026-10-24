@@ -69,7 +69,7 @@ test(`${variant.name}: actions and commands use the execution entry and clean up
   const theme = getDefaultTheme(false);
   const themeContext: ThemeContextValue = {
     currentTheme: theme, availableThemes: [theme], customThemeIds: [], setTheme: () => {}, customThemesLoading: false,
-    reloadCustomThemes: async () => {}, importTheme: async () => theme, deleteImportedTheme: async () => {},
+    reloadCustomThemes: async () => [theme], importTheme: async () => theme, deleteImportedTheme: async () => {},
     isSystemPreference: false, setSystemPreference: () => {}, themeMode: 'light', setThemeMode: () => {},
     lightThemeId: theme.metadata.id, darkThemeId: theme.metadata.id, setLightThemePreference: () => {}, setDarkThemePreference: () => {},
   };

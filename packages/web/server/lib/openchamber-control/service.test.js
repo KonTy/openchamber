@@ -643,26 +643,27 @@ describe('file.open', () => {
 });
 
 describe('theme.set', () => {
-  it('asks the windows to switch and reports how many were reached', async () => {
-    const setTheme = vi.fn(() => 2);
-    const { service } = createService({ setTheme });
+  it('waits for the theme owner to confirm application', async () => {
+    const outcome = { id: 'tokyonight-dark', delivered: 1, applied: [{ connectionId: 'one', themeId: 'tokyonight-dark', backgroundOpacity: 1, transparentWindow: false }] };
+    const set = vi.fn(async () => outcome);
+    const { service } = createService({ themeControl: { set } });
 
     const result = await service.execute('theme.set', { id: ' tokyonight-dark ' });
 
-    expect(setTheme).toHaveBeenCalledWith({ id: 'tokyonight-dark' });
-    expect(result).toEqual({ id: 'tokyonight-dark', delivered: 2 });
+    expect(set).toHaveBeenCalledWith('tokyonight-dark', { signal: undefined });
+    expect(result).toEqual(outcome);
   });
 
   it('answers 400 without an id', async () => {
-    const setTheme = vi.fn(() => 1);
-    const { service } = createService({ setTheme });
+    const set = vi.fn();
+    const { service } = createService({ themeControl: { set } });
 
     await expect(service.execute('theme.set', { id: '  ' })).rejects.toMatchObject({ statusCode: 400 });
-    expect(setTheme).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
   });
 
   it.each([
-    ['no window is connected', { setTheme: vi.fn(() => 0) }],
+    ['no window is connected', { themeControl: { set: vi.fn(async () => { throw new OpenChamberControlError('No window', 503); }) } }],
     ['this server has no theme switch wired', {}],
   ])('answers 503 when %s', async (_name, overrides) => {
     const { service } = createService(overrides);
