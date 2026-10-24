@@ -7,12 +7,19 @@ const workflow = yaml.parse(fs.readFileSync(new URL('../.github/workflows/releas
 
 test('fork Linux builds use standard native runners and the Ubuntu 22.04 userspace', () => {
   assert.equal(workflow.jobs.build.if, "${{ github.repository == 'KonTy/openchamber' }}");
-  assert.equal(workflow.jobs.build.container, 'ubuntu:22.04');
+  assert.equal(workflow.jobs.build.container.image, 'ubuntu:22.04');
+  assert.equal(workflow.jobs.build.container.options, '--shm-size=1g');
   assert.deepEqual(workflow.jobs.build.strategy.matrix.include.map(({ runner, arch }) => [runner, arch]), [
     ['ubuntu-24.04', 'x64'], ['ubuntu-24.04-arm', 'arm64'],
   ]);
-  assert.equal(workflow.jobs.arch.container, 'archlinux:base-devel');
+  assert.equal(workflow.jobs.arch.container.image, 'archlinux:base-devel');
+  assert.equal(workflow.jobs.arch.container.options, '--shm-size=1g');
   assert.deepEqual(workflow.permissions, { contents: 'read' });
+  assert.deepEqual(workflow.env, {
+    GIT_CONFIG_COUNT: '1',
+    GIT_CONFIG_KEY_0: 'safe.directory',
+    GIT_CONFIG_VALUE_0: '${{ github.workspace }}',
+  });
 });
 
 test('draft creation requires the maintained branch and explicit dispatch and cannot publish automatically', () => {
@@ -51,4 +58,6 @@ test('Nobara validation installs its real release packages and preserves signatu
   const install = workflow.jobs.nobara.steps.find((step) => step.name === 'Install and exercise the Nobara RPM');
   assert(install.run.includes('test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"'));
   assert(install.run.includes('scripts/smoke-theme-control.mjs'));
+  assert(install.run.includes('docker run --rm --shm-size=1g'));
+  assert(install.run.includes('ELECTRON_RUN_AS_NODE=1 /opt/OpenChamber/openchamber'));
 });

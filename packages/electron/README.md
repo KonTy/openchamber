@@ -27,6 +27,9 @@ reports before writing `SHA256SUMS` and source provenance. It never publishes
 the draft automatically. Isolated AppImage update/shutdown and HMR validation
 remain separate release gates. Container checks do not prove
 compositor rendering, host sandbox policy or desktop integration on a real OS.
+The runtime containers allocate 1 GiB of shared memory. Docker and Podman's
+64 MiB default exhausts Chromium's asset-loading buffers during packaged startup
+and leaves the renderer blank with `ERR_UNEXPECTED` asset failures.
 
 The theme-control fixture also accepts `--development` instead of
 `--executable`. It runs the normal Electron/HMR launcher with fresh data,

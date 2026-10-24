@@ -13,6 +13,11 @@ on:
 permissions:
   contents: read
 
+env:
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: ${{ github.workspace }}
+
 concurrency:
   group: fork-linux-${{ github.ref }}
   cancel-in-progress: false
@@ -39,7 +44,9 @@ jobs:
             rpm_arch: aarch64
             manifest: latest-linux-arm64.yml
     runs-on: ${{ matrix.runner }}
-    container: ubuntu:22.04
+    container:
+      image: ubuntu:22.04
+      options: --shm-size=1g
     defaults:
       run:
         shell: bash
@@ -137,7 +144,9 @@ jobs:
   arch:
     needs: build
     runs-on: ubuntu-24.04
-    container: archlinux:base-devel
+    container:
+      image: archlinux:base-devel
+      options: --shm-size=1g
     defaults:
       run:
         shell: bash
@@ -208,7 +217,7 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           export VERSION
           mkdir release-files
-          docker run --rm --env VERSION \
+          docker run --rm --shm-size=1g --env VERSION \
             --volume "$PWD:/source:ro" --volume "$PWD/native:/artifacts:ro" \
             --volume "$PWD/release-files:/results" openchamber-nobara bash -c '
               set -euo pipefail
@@ -219,7 +228,8 @@ jobs:
               dnf -y --disablerepo="*" --enablerepo=nobara --enablerepo=nobara-updates \
                 install "/artifacts/OpenChamber-$VERSION-linux-x86_64.rpm"
               test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"
-              xvfb-run -a node /source/packages/electron/scripts/smoke-theme-control.mjs \
+              xvfb-run -a env ELECTRON_RUN_AS_NODE=1 /opt/OpenChamber/openchamber \
+                /source/packages/electron/scripts/smoke-theme-control.mjs \
                 --executable /opt/OpenChamber/openchamber \
                 --directory /tmp/theme-control --report /results/theme-control-nobara.json
               cp /etc/os-release /results/nobara-os-release
