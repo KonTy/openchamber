@@ -85,6 +85,7 @@
     "profile:browser": "node scripts/profile-browser.mjs",
     "icons:sprite": "node scripts/generate-file-type-sprite.mjs",
     "icons:generate": "bun run scripts/generate-icon-sprite.mjs",
+    "brand:generate": "bun run scripts/brand/generate.mjs",
     "themes:port:opencode": "bun scripts/port-opencode-theme.ts",
     "themes:port:opencode:test": "bun test ./scripts/port-opencode-theme.integration.ts",
     "version:bump": "node scripts/bump-version.mjs",

@@ -284,6 +284,23 @@ expander asks `useGitComparison.fetchFullFile`, which reads both sides of that
 file from the provider through `/api/walkthrough/pr-file` (merge base and PR head),
 never from disk, so local edits and unfetched fork commits cannot leak in or
 block it. Existing inline comment controls still attach selected code to chat.
+
+A comment on a comparison (a pull request, a commit, a branch against its
+base) carries the diff it was written on (`lib/diffCommentOrigin.ts`): Changes,
+mobile Changes and walkthrough each derive it from the source they show. The
+model reads where the lines come from ("in GitHub pull request #5543 at commit
+…"), because a pull request that is not checked out has other lines on disk,
+and the chip names it beside the file. Drafts show only on the diff they were
+written on, so a comment on a pull request's `app.ts` does not appear on the
+working tree's. A comment on uncommitted changes has no origin: its lines are
+the files on disk.
+
+A file's header in Changes, mobile Changes and the walkthrough also takes a
+comment on the whole file (`components/comments/useWholeFileComment.tsx`): a
+diff draft with lines 0-0, the same origin, and no code. Its editor and saved
+cards render under the header, never inside the diff, so the viewer filters
+those drafts out of its line annotations. The trigger fades in with the
+header's hover and stays visible on touch and while its editor is open.
 Changes hands its PR source to walkthrough; walkthrough's Changes action opens
 PR mode with the shared selection. Picking a PR never generates a walkthrough.
 
@@ -356,3 +373,28 @@ archive. Restore brings it back on its own, under that parent. One rule,
 `isRestorableOnItsOwn` in `sync/session-restore-rule.ts`, decides what the page
 lists, when the chat header's session menu offers Restore, and what the restore
 action accepts, so the three never disagree.
+
+On desktop the panel on the left groups by project, not by folder: a session
+belongs to its project the way the sidebar decides it (by folder, then by
+OpenCode's project, which still places a session whose worktree is gone).
+The chats of a deleted isolated space keep their own groups, and everything
+outside a project is one Other group. A project's archived worktrees
+(`lib/worktrees/worktreeArchive.ts`, read from the repository each time the
+page opens) head its list, each a tile with Restore and Delete for good and
+its own sessions inside; the project's other sessions follow. The archive records
+which sessions it holds, so a folder name that repeats across repositories or
+over time never mixes them up. Restoring one session of an archived worktree
+restores the whole worktree (`lib/worktrees/relocateRestoredSession.ts`), since
+in the project root it would miss the changes it worked on; a session whose
+folder is gone without an archive still moves to the project root. Restores of one archive are
+joined, not repeated: a session's subsessions come back one by one, and each
+would start it. Deleting an archive for good deletes only its sessions still in
+the archive that no other archive of the project holds.
+
+The phone shows the same page in one column: the groups are a row of chips
+that scrolls sideways (hidden while searching, since a search spans them
+all), and a selected project's archived worktrees are tiles above its other
+sessions, as on the desktop. Restore and a worktree's Delete are always shown,
+as nothing hovers; rows name their group only in the lists that mix groups.
+Deleting a session stays on the desktop, whose confirmation dialog the mobile
+shell does not mount.

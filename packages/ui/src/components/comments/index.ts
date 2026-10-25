@@ -5,3 +5,6 @@ export * from './CodeMirrorCommentWidgets';
 export * from './PierreDiffCommentUtils';
 export * from './PierreDiffCommentOverlays';
 export * from './FilePreviewCommentMenu';
+export * from './useWholeFileComment';
+export * from './WholeFileCommentButton';
+export * from './wholeFileComment';

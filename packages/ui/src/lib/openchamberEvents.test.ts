@@ -432,6 +432,34 @@ describe('openchamber events', () => {
     }
   });
 
+  test('dispatches draft changes alongside theme control on the same stream', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const revisions: number[] = [];
+    const themes: string[] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => {
+      if (event.type === 'session-drafts-changed') revisions.push(event.updatedAt);
+      if (event.type === 'theme-control-request') themes.push(event.requestId);
+    }, { themeControl: true });
+    try {
+      const source = MockEventSource.instances.at(-1);
+      for (const properties of [{ updatedAt: 42 }, {}, { updatedAt: 'later' }]) {
+        source?.onmessage?.({
+          data: JSON.stringify({ type: 'openchamber:session-drafts-changed', properties }),
+        });
+      }
+      source?.onmessage?.({
+        data: JSON.stringify({
+          type: 'openchamber:theme-control-request',
+          properties: { requestId: 'theme-after-draft', connectionId: 'window', action: 'set', id: 'nord-dark' },
+        }),
+      });
+      expect(revisions).toEqual([42]);
+      expect(themes).toEqual(['theme-after-draft']);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   test('dispatches an agent file-open request and drops one without a path', async () => {
     const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
     const events: unknown[] = [];
