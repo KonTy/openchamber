@@ -39,7 +39,8 @@ The `scripts/smoke-theme-watch.mjs` fixture also accepts `--development` instead
 `--executable`. It runs the normal Electron/HMR launcher with fresh data,
 password authentication, ephemeral API/UI/CDP ports and native alpha explicitly
 enabled. Its second window opens the HMR URL explicitly because the development
-New window command uses the backend's built assets. Both windows must finish
+New window command uses the backend's built assets. HMR snapshots read the
+URL-scoped preferences rather than assuming the bundled UI's `local` key. Both windows must finish
 application bootstrap before the fixture atomically replaces the selected
 custom theme's file. It checks both windows' palette and effective background
 alpha, unchanged selection preferences, invalid theme rejection, and refusal

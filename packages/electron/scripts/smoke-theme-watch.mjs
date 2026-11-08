@@ -104,6 +104,20 @@ const evaluate = async (client, expression) => {
   assert(!response.exceptionDetails, response.exceptionDetails?.exception?.description || response.exceptionDetails?.text);
   return response.result.value;
 };
+const waitForApplication = async (client) => {
+  let submitted = false;
+  await until(async () => {
+    const state = await evaluate(client, '({ ready: window.__openchamberAppReady === true, login: Boolean(document.querySelector("#openchamber-ui-password")) })');
+    if (state.ready) return true;
+    if (state.login && !submitted) {
+      await evaluate(client, 'document.querySelector("#openchamber-ui-password").focus()');
+      await client.send('Input.insertText', { text: password });
+      await evaluate(client, 'document.querySelector("#openchamber-ui-password").form.requestSubmit()');
+      submitted = true;
+    }
+    return false;
+  }, 'the usable authenticated application', 240_000);
+};
 const request = (client, route, body) => evaluate(client, `(async () => {
   const base = window.__OPENCHAMBER_API_BASE_URL__ || ${hmr ? 'window.location.origin' : 'null'};
   if (!base) return null;
@@ -138,6 +152,7 @@ const observe = async (target) => {
   return client;
 };
 const snapshot = (client) => evaluate(client, `(() => {
+  const runtimeKey = ${hmr ? "'url:' + window.location.origin" : "'local'"};
   const root = document.getElementById('root');
   const style = getComputedStyle(root);
   const canvas = document.createElement('canvas');
@@ -150,7 +165,7 @@ const snapshot = (client) => evaluate(client, `(() => {
   context.fillStyle = style.color;
   context.fillRect(0, 0, 1, 1);
   return {
-    selected: JSON.parse(localStorage.getItem('openchamber.theme.v2:local')),
+    selected: JSON.parse(localStorage.getItem('openchamber.theme.v2:' + encodeURIComponent(runtimeKey))),
     primary: style.getPropertyValue('--primary-base').trim(),
     alpha,
     foregroundAlpha: context.getImageData(0, 0, 1, 1).data[3],
@@ -166,11 +181,7 @@ try {
   const pages = async () => (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   const target = await until(async () => (await pages()).find(isApplicationPage), 'the application renderer');
   const client = await observe(target);
-  await until(() => evaluate(client, 'Boolean(document.querySelector("#openchamber-ui-password"))'), 'the native sign-in form');
-  await evaluate(client, 'document.querySelector("#openchamber-ui-password").focus()');
-  await client.send('Input.insertText', { text: password });
-  await evaluate(client, 'document.querySelector("#openchamber-ui-password").form.requestSubmit()');
-  await until(() => evaluate(client, 'window.__openchamberAppReady === true'), 'the usable application');
+  await waitForApplication(client);
   for (const action of ['theme.set', 'theme.capabilities']) {
     const refused = await request(client, '/api/openchamber/control', { action, input: { id: fixture.metadata.id } });
     assert.equal(refused.status, 400);
@@ -182,7 +193,7 @@ try {
     : 'window.__OPENCHAMBER_DESKTOP__.invoke("desktop_new_window")');
   const second = await until(async () => (await pages()).find((page) => page.id !== target.id && isApplicationPage(page)), 'the second native window');
   const secondClient = await observe(second);
-  await until(() => evaluate(secondClient, 'window.__openchamberAppReady === true'), 'the usable second application');
+  await waitForApplication(secondClient);
   await until(async () => (await Promise.all(clients.map(snapshot))).every((state) => state.selected?.darkThemeId === fixture.metadata.id), 'the initially selected custom theme');
   const preferencesBefore = await fs.readFile(path.join(data, 'preferences.json'));
   const alternate = JSON.parse(await fs.readFile(new URL('../../ui/src/lib/theme/themes/openchamber-light.json', import.meta.url), 'utf8'));
@@ -277,6 +288,7 @@ try {
 } catch (error) {
   await fs.writeFile(path.resolve(values.report), JSON.stringify({
     checks, error: error.message, assetFailures, latenciesMs,
+    windowStates: await Promise.allSettled(clients.map(snapshot)),
   }, null, 2) + '\n');
   throw error;
 } finally {

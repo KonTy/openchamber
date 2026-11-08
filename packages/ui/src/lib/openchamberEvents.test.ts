@@ -194,13 +194,29 @@ describe('openchamber events', () => {
       webUnsubscribe();
     }
 
-    Object.assign(window, { __OPENCHAMBER_ELECTRON__: true });
+    Object.assign(window, { __OPENCHAMBER_ELECTRON__: { runtime: 'electron' } });
+    let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+      if (!String(_input).includes('/api/openchamber/events')) return new Response('Unexpected fixture HTTP request', { status: 501 });
+      return new Response(new ReadableStream<Uint8Array>({
+        start(value) {
+          controller = value;
+          init?.signal?.addEventListener('abort', () => value.close(), { once: true });
+        },
+      }), { headers: { 'content-type': 'text/event-stream' } });
+    });
     const drivingUnsubscribe = subscribeOpenchamberEvents(() => undefined);
     try {
-      expect(MockEventSource.instances).toHaveLength(2);
-      expect(MockEventSource.instances[1].url).toContain('browser=1');
+      for (let i = 0; i < 20 && fetchSpy.mock.calls.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(MockEventSource.instances).toHaveLength(1);
+      const streamCalls = fetchSpy.mock.calls.filter(([input]) => String(input).includes('/api/openchamber/events'));
+      expect(streamCalls).toHaveLength(1);
+      expect(streamCalls[0][0]).toContain('/api/openchamber/events?browser=1');
+      expect(streamCalls[0][1]?.credentials).toBe('include');
+      controller?.enqueue(new TextEncoder().encode('data: {"type":"openchamber:event-stream-ready"}\n\n'));
     } finally {
       drivingUnsubscribe();
+      fetchSpy.mockRestore();
     }
   });
 

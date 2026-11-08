@@ -5,7 +5,7 @@ import { getRuntimeExtraHeadersSync } from './runtime-auth';
 import { isCapacitorApp } from './platform';
 import { isRelayModeActive } from './relay/runtime-tunnel';
 import { subscribeRuntimeEndpointChanged } from './runtime-switch';
-import { isVSCodeRuntime } from './desktop';
+import { isDesktopShell, isVSCodeRuntime } from './desktop';
 import { canDriveBrowserPage } from './browser/hostCapability';
 import { messageQueueUpdatedEventSchema, type MessageQueueUpdatedEvent } from '@/stores/messageQueueStore';
 import { autoReviewUpdatedEventSchema, type AutoReviewUpdatedEvent } from '@/stores/useAutoReviewStore';
@@ -415,6 +415,7 @@ const connectFetchStream = (canControlBrowser: boolean) => {
       const response = await runtimeFetch('/api/openchamber/events', {
         query: canControlBrowser ? { browser: '1' } : undefined,
         headers: { Accept: 'text/event-stream' },
+        credentials: 'include',
         signal: controller.signal,
       });
       if (controller.signal.aborted) {
@@ -830,9 +831,7 @@ const connect = () => {
   // driven, and the agent tool needs to know which it is talking to without a
   // setting anyone has to remember to change.
   const canControlBrowser = canDriveBrowserPage();
-  // Native mobile has no desktop realtime proxy. Fetch can attach the saved
-  // instance headers to SSE; EventSource cannot.
-  if (isRelayModeActive() || (Object.keys(getRuntimeExtraHeadersSync()).length > 0 && isCapacitorApp())) {
+  if (isDesktopShell() || isRelayModeActive() || (Object.keys(getRuntimeExtraHeadersSync()).length > 0 && isCapacitorApp())) {
     connectFetchStream(canControlBrowser);
     return;
   }
