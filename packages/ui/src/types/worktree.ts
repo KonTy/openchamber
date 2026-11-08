@@ -24,6 +24,12 @@ export interface WorktreeMetadata {
    */
   title?: string;
 
+  /** When the user pinned the task to the top of the sidebar; absent while unpinned. */
+  pinnedAt?: number;
+
+  /** The user's pin list the pin is filed in (`lib/sidebarSections.ts`); absent for Pinned. */
+  pinList?: string;
+
   kind?: 'pr' | 'standard';
 
   /**

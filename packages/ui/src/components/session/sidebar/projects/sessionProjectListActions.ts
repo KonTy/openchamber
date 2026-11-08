@@ -2,7 +2,7 @@ import { requestDirectoryAccess } from '@/lib/desktop';
 import { formatDirectoryName } from '@/lib/utils';
 import { refreshGlobalSessions } from '@/stores/useGlobalSessionsStore';
 import type { useChildStoreManager } from '@/sync/sync-context';
-import type { SessionSidebarRow } from '../sessionSidebarRowModel';
+import { PROJECTS_CAPTION_COLLAPSE_KEY, type SessionSidebarRow } from '../sessionSidebarRowModel';
 import { formatProjectLabel } from '../utils';
 import type { SessionProjectListProps } from './SessionProjectScroller';
 import type { ProjectSection } from './sessionProjectRender';
@@ -36,18 +36,32 @@ export const toggleActivityZone = (
   });
 };
 
-/** Show more or Show fewer under a zone or a group. */
+/** Folds or opens every project under a caption at once: Projects, or a group of projects the user made. */
+export const toggleProjectsCaption = (
+  row: Extract<SessionSidebarRow, { kind: 'caption' }>,
+  { model }: Pick<SessionProjectListProps, 'model'>,
+): void => {
+  const key = row.caption === 'projects' ? PROJECTS_CAPTION_COLLAPSE_KEY : row.caption;
+  model.state.setCollapsedActivityKeys((current) => {
+    const next = new Set(current);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+};
+
+/** Show more, or Show less back to the first batch, under a zone or a group. */
 export const applyShowControl = (
   row: Extract<SessionSidebarRow, { kind: 'show-control' }>,
+  control: 'more' | 'fewer',
   { model, actions }: Pick<SessionProjectListProps, 'model' | 'actions'>,
 ): void => {
   if (row.containerKey.startsWith('activity:')) {
     model.state.setVisibleActivityCountByKey((current) => {
       const next = new Map(current);
-      if (row.control === 'more') next.set(row.containerKey, row.currentCount + row.increment); else next.delete(row.containerKey);
+      if (control === 'more') next.set(row.containerKey, row.currentCount + row.increment); else next.delete(row.containerKey);
       return next;
     });
-  } else if (row.control === 'more') actions.group.showMoreGroupSessions(row.containerKey, row.currentCount, row.increment);
+  } else if (control === 'more') actions.group.showMoreGroupSessions(row.containerKey, row.currentCount, row.increment);
   else actions.group.resetGroupSessionLimit(row.containerKey);
 };
 

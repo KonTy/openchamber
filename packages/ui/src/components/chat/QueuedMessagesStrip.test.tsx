@@ -18,7 +18,7 @@ const theme = getDefaultTheme(false);
 // Agent badges take their color from the theme.
 const themeContext: ThemeContextValue = {
   currentTheme: theme, availableThemes: [theme], customThemeIds: [], setTheme: () => {}, customThemesLoading: false,
-  reloadCustomThemes: async () => [theme], importTheme: async () => theme, deleteImportedTheme: async () => {},
+  reloadCustomThemes: async () => {}, importTheme: async () => theme, deleteImportedTheme: async () => {},
   isSystemPreference: false, setSystemPreference: () => {}, themeMode: 'light', setThemeMode: () => {},
   lightThemeId: theme.metadata.id, darkThemeId: theme.metadata.id, setLightThemePreference: () => {}, setDarkThemePreference: () => {},
 };
@@ -51,6 +51,8 @@ describe('QueuedMessagesStrip', () => {
       HTMLElement: windowInstance.HTMLElement,
       Element: windowInstance.Element,
       Node: windowInstance.Node,
+      requestAnimationFrame: windowInstance.requestAnimationFrame.bind(windowInstance),
+      cancelAnimationFrame: windowInstance.cancelAnimationFrame.bind(windowInstance),
       IS_REACT_ACT_ENVIRONMENT: true,
     });
     sent = [];

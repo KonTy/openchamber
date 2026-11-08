@@ -131,10 +131,10 @@ jobs:
           CLI_SHA=$(sha256sum /usr/bin/openchamber)
           apt-get install -y "./packages/electron/dist/OpenChamber-$VERSION-linux-$DEB_ARCH.deb"
           test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"
-          xvfb-run -a node packages/electron/scripts/smoke-theme-control.mjs \
+          xvfb-run -a node packages/electron/scripts/smoke-theme-watch.mjs \
             --executable /opt/OpenChamber/openchamber \
-            --directory "$RUNNER_TEMP/theme-control" \
-            --report "release-files/theme-control-$OPENCHAMBER_TARGET_ARCH.json"
+            --directory "$RUNNER_TEMP/theme-watch" \
+            --report "release-files/theme-watch-$OPENCHAMBER_TARGET_ARCH.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fork-linux-${{ matrix.arch }}
@@ -186,10 +186,10 @@ jobs:
           pacman -U --noconfirm release-files/*.pkg.tar.zst
           test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"
           test "$(cat /opt/OpenChamber/resources/package-type)" = arch
-          xvfb-run -a node packages/electron/scripts/smoke-theme-control.mjs \
+          xvfb-run -a node packages/electron/scripts/smoke-theme-watch.mjs \
             --executable /opt/OpenChamber/openchamber \
-            --directory "$RUNNER_TEMP/theme-control" \
-            --report release-files/theme-control-arch.json
+            --directory "$RUNNER_TEMP/theme-watch" \
+            --report release-files/theme-watch-arch.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fork-linux-arch
@@ -229,9 +229,9 @@ jobs:
                 install "/artifacts/OpenChamber-$VERSION-linux-x86_64.rpm"
               test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"
               xvfb-run -a env ELECTRON_RUN_AS_NODE=1 /opt/OpenChamber/openchamber \
-                /source/packages/electron/scripts/smoke-theme-control.mjs \
+                /source/packages/electron/scripts/smoke-theme-watch.mjs \
                 --executable /opt/OpenChamber/openchamber \
-                --directory /tmp/theme-control --report /results/theme-control-nobara.json
+                --directory /tmp/theme-watch --report /results/theme-watch-nobara.json
               cp /etc/os-release /results/nobara-os-release
               rpm -q nobara-release nobara-repos nobara-gpg-keys glibc gtk3 nss \
                 > /results/nobara-rpm-versions.txt

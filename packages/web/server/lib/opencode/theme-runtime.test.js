@@ -117,6 +117,25 @@ describe('theme runtime', () => {
       expect(themes.map((theme) => theme.metadata.id)).toEqual(['direct-theme']);
     });
 
+    it('preserves the last valid palette for invalid opacity and skips invalid new themes', async () => {
+      const theme = { ...validTheme('editing'), config: { backgroundOpacity: 0.5 } };
+      const entries = [fileEntry('editing.json'), fileEntry('new.json')];
+      const files = { '/themes/editing.json': JSON.stringify(theme), '/themes/new.json': '{broken' };
+      const stats = Object.fromEntries(entries.map(({ name }) => [`/themes/${name}`, { isFile: () => true, size: 1024 }]));
+      const runtime = createTestRuntime({ entries, files, stats });
+      expect((await runtime.readCustomThemesFromDisk())[0].config.backgroundOpacity).toBe(0.5);
+      for (const opacity of [0, -1, 1.1, '0.5', null]) {
+        const invalid = { ...theme, config: { backgroundOpacity: opacity } };
+        files['/themes/editing.json'] = JSON.stringify(invalid);
+        files['/themes/new.json'] = JSON.stringify({ ...invalid, metadata: { ...invalid.metadata, id: 'new' } });
+        const loaded = await runtime.readCustomThemesFromDisk();
+        expect(loaded.map(({ metadata }) => metadata.id)).toEqual(['editing']);
+        expect(loaded[0].config.backgroundOpacity).toBe(0.5);
+      }
+      files['/themes/editing.json'] = JSON.stringify({ ...theme, config: { backgroundOpacity: 1 } });
+      expect((await runtime.readCustomThemesFromDisk())[0].config.backgroundOpacity).toBe(1);
+    });
+
     it('loads JSON themes whose directory entry is a symbolic link', async () => {
       const runtime = createTestRuntime({
         entries: [fileEntry('linked.json', 'symlink')],
@@ -127,6 +146,27 @@ describe('theme runtime', () => {
       const themes = await runtime.readCustomThemesFromDisk();
 
       expect(themes.map((theme) => theme.metadata.id)).toEqual(['linked-theme']);
+    });
+
+    it('keeps the last valid version of a theme file while it is broken, and drops it once the file is gone', async () => {
+      const valid = validTheme('editing');
+      const entries = [fileEntry('editing.json')];
+      const files = { '/themes/editing.json': JSON.stringify(valid) };
+      const stats = { '/themes/editing.json': { isFile: () => true, size: 1024 } };
+      const runtime = createTestRuntime({ entries, files, stats });
+      expect((await runtime.readCustomThemesFromDisk()).map((theme) => theme.metadata.id)).toEqual(['editing']);
+
+      files['/themes/editing.json'] = '{"metadata": {';
+      expect(await runtime.readCustomThemesFromDisk()).toEqual([expect.objectContaining({ metadata: expect.objectContaining({ id: 'editing' }) })]);
+
+      files['/themes/editing.json'] = JSON.stringify({ ...valid, metadata: { ...valid.metadata, name: 'Edited' } });
+      expect((await runtime.readCustomThemesFromDisk()).map((theme) => theme.metadata.name)).toEqual(['Edited']);
+
+      entries.length = 0;
+      expect(await runtime.readCustomThemesFromDisk()).toEqual([]);
+      entries.push(fileEntry('editing.json'));
+      files['/themes/editing.json'] = '{broken';
+      expect(await runtime.readCustomThemesFromDisk()).toEqual([]);
     });
 
     it('skips JSON directories after stat resolution', async () => {

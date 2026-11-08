@@ -3,13 +3,13 @@ import { Icon } from '@/components/icon/Icon';
 import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { SpaceGroupStatus } from '@/components/session/spaces/SpaceGroupStatus';
-import { ACTIVITY_ICON, ACTIVITY_TITLE_KEY } from '@/components/session/sidebar/sessionSidebarActivityLabels';
+import { ACTIVITY_TITLE_KEY, isBuiltinActivityKey } from '@/components/session/sidebar/sessionSidebarActivityLabels';
 import type { SessionSidebarRow } from '@/components/session/sidebar/sessionSidebarRowModel';
 import { FileTreeChevron } from '@/components/views/files/FileTreeRowParts';
 import { useI18n } from '@/lib/i18n';
-import { useSpacesStore } from '@/lib/spaces/spaces-store';
 import { cn } from '@/lib/utils';
+import { formatProjectLabel } from '@/components/session/sidebar/utils';
+import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useSessionFoldersStore } from '@/stores/useSessionFoldersStore';
 import { MobileProjectIcon } from '../MobileProjectIcon';
 import { MobileSwipeActionsRow, ROW_ACTION_SLOT_WIDTH } from '../MobileSessionSwipe';
@@ -17,11 +17,10 @@ import type { MobileTreeGeometry } from './mobileSidebarGeometry';
 import { useMobileRowSwipe, useMobileSidebarActions, useMobileSidebarRowsStore } from './mobileSidebarState';
 import { MobileSwipeAction } from './mobileRowParts';
 
-// The icon's 20px glyph starts where the rows' 14px slot does (the slot's 8px
-// base, less the 24px icon slot's 2px around the glyph), so the header's icon
-// reads down the same column as the rows' chevrons and states, and its label
-// sits near their titles, as the desktop's zone headers do.
-const SECTION_HEADER_CLASS = 'flex min-h-12 min-w-0 flex-1 items-center gap-1.5 ps-1.5 pe-3 py-1.5 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+// A header starts on the rows' 14px slot (8px in), as the desktop's do: a
+// caption's word there, a project's icon in the slot with its label where
+// the rows' titles start. 40px tall for a thumb.
+const SECTION_HEADER_CLASS = 'flex min-h-10 min-w-0 flex-1 items-center gap-1.5 ps-2 pe-3 py-1.5 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
 
 /** A tap on a header while a row has its actions out only puts them away. */
 const putAwayRevealed = (): boolean => {
@@ -31,34 +30,55 @@ const putAwayRevealed = (): boolean => {
   return true;
 };
 
-/** Chats, Pinned, In work or the list by time: a section of the same weight as a project. */
+/**
+ * A section's caption, as the desktop's: a bare muted word at the rows' size,
+ * with the chevron after it. The chevron always shows, as a phone has no
+ * hover to reveal it.
+ */
+const MobileCaption: React.FC<{
+  label: string;
+  collapsed: boolean;
+  forceExpanded: boolean;
+  onToggle: () => void;
+}> = ({ label, collapsed, forceExpanded, onToggle }) => {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      className={cn(SECTION_HEADER_CLASS, 'w-full gap-1')}
+      disabled={forceExpanded}
+      onClick={() => {
+        if (!putAwayRevealed()) onToggle();
+      }}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? t('sessions.sidebar.group.expandAria', { label }) : t('sessions.sidebar.group.collapseAria', { label })}
+      style={{ touchAction: 'manipulation' }}
+    >
+      <span className="min-w-0 truncate typography-ui-label font-medium text-muted-foreground">{label}</span>
+      {forceExpanded ? null : <Icon name={collapsed ? 'arrow-right-s' : 'arrow-down-s'} className="size-4 shrink-0 text-muted-foreground" />}
+    </button>
+  );
+};
+
+/** Chats, Pinned, In work or the list by time. */
 export const MobileZoneHeader: React.FC<{
   row: Extract<SessionSidebarRow, { kind: 'activity-header' }>;
   onToggle: () => void;
 }> = ({ row, onToggle }) => {
   const { t } = useI18n();
-  const label = t(ACTIVITY_TITLE_KEY[row.activityKey]);
-  return (
-    <button
-      type="button"
-      className={cn(SECTION_HEADER_CLASS, 'w-full')}
-      disabled={row.forceExpanded}
-      onClick={() => {
-        if (!putAwayRevealed()) onToggle();
-      }}
-      aria-expanded={!row.collapsed}
-      aria-label={row.collapsed ? t('sessions.sidebar.group.expandAria', { label }) : t('sessions.sidebar.group.collapseAria', { label })}
-      style={{ touchAction: 'manipulation' }}
-    >
-      <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground">
-        <Icon name={ACTIVITY_ICON[row.activityKey]} className="size-5" />
-      </span>
-      <span className="block min-w-0 flex-1 truncate typography-ui-header font-semibold text-foreground">{label}</span>
-    </button>
-  );
+  return <MobileCaption label={row.label ?? (isBuiltinActivityKey(row.activityKey) ? t(ACTIVITY_TITLE_KEY[row.activityKey]) : '')} collapsed={row.collapsed} forceExpanded={row.forceExpanded} onToggle={onToggle} />;
 };
 
-const HeaderIconButton: React.FC<{ icon: 'add' | 'node-tree'; label: string; onClick: () => void }> = ({ icon, label, onClick }) => (
+/** The caption over the projects: closed, it folds every project away. */
+export const MobileProjectsCaption: React.FC<{
+  row: Extract<SessionSidebarRow, { kind: 'caption' }>;
+  onToggle: () => void;
+}> = ({ row, onToggle }) => {
+  const { t } = useI18n();
+  return <MobileCaption label={row.label ?? t('sessions.sidebar.activity.projectsTitle')} collapsed={row.collapsed} forceExpanded={row.forceExpanded} onToggle={onToggle} />;
+};
+
+const HeaderIconButton: React.FC<{ icon: 'add' | 'git-branch'; label: string; onClick: () => void }> = ({ icon, label, onClick }) => (
   <button
     type="button"
     className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -125,7 +145,7 @@ export const MobileProjectHeader: React.FC<{
         />
       </>}
     >
-      <div data-active-project={active || undefined} className="flex min-h-12 w-full items-center">
+      <div data-active-project={active || undefined} className="flex min-h-10 w-full items-center">
         <button
           type="button"
           className={SECTION_HEADER_CLASS}
@@ -136,10 +156,12 @@ export const MobileProjectHeader: React.FC<{
           aria-label={row.collapsed ? t('sessions.sidebar.group.expandAria', { label }) : t('sessions.sidebar.group.collapseAria', { label })}
           style={{ touchAction: 'manipulation' }}
         >
-          <MobileProjectIcon project={project} />
-          <span className="block min-w-0 flex-1 truncate typography-ui-header font-semibold text-foreground">{label}</span>
+          {/* As on the desktop: the icon in the rows' slot, the label at the
+              rows' size and medium weight where their titles start. */}
+          <MobileProjectIcon project={project} size="xs" />
+          <span className="block min-w-0 flex-1 truncate ps-1 typography-ui-label font-medium text-foreground">{label}</span>
         </button>
-        {isRepo ? <HeaderIconButton icon="node-tree" label={t('sessions.sidebar.project.actions.newWorktree')} onClick={() => actions.openNewWorktree(project.id)} /> : null}
+        {isRepo ? <HeaderIconButton icon="git-branch" label={t('sessions.sidebar.project.actions.newWorktree')} onClick={() => actions.openNewWorktree(project.id)} /> : null}
         {/* Its edge on the drawer's gutter, as the header's New chat. */}
         <HeaderIconButton icon="add" label={t('mobile.sessions.newSessionInProjectAria', { label })} onClick={onNewSession} />
       </div>
@@ -147,22 +169,16 @@ export const MobileProjectHeader: React.FC<{
   );
 };
 
-/**
- * A group that is not a work of its own: an isolated space, with its state
- * under its name. Swiping reveals its access dialog and its actions sheet.
- */
+/** A group that is not a work of its own: the archive bucket of a project. */
 export const MobileGroupHeader: React.FC<{
   row: Extract<SessionSidebarRow, { kind: 'group-header' }>;
   geometry: MobileTreeGeometry;
   onToggle: (groupKey: string) => void;
 }> = ({ row, geometry, onToggle }) => {
   const { t } = useI18n();
-  const { revealed } = useMobileRowSwipe(row.key);
-  const space = row.group.space ?? null;
-  const label = space ? space.name || t('sessions.sidebar.grouping.spaceUnnamed') : row.group.label;
+  const label = row.group.label;
   const expanded = row.forceExpanded || !row.collapsed;
-  const setRevealed = (next: boolean) => useMobileSidebarRowsStore.getState().setRevealed(row.key, next);
-  const header = (
+  return (
     <button
       type="button"
       className="flex min-h-10 w-full items-center gap-0.5 py-1 pe-3 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
@@ -174,43 +190,10 @@ export const MobileGroupHeader: React.FC<{
       style={{ paddingInlineStart: geometry.slotLeft(row.depth), touchAction: 'manipulation' }}
     >
       {row.empty ? <span aria-hidden className="size-3.5 shrink-0" /> : <FileTreeChevron expanded={expanded} />}
-      <Icon name={space ? 'box-3' : 'folder'} className="mx-px size-3 shrink-0 text-muted-foreground" />
+      <Icon name="folder" className="mx-px size-3 shrink-0 text-muted-foreground" />
       {/* A step below full strength, as on the desktop sidebar. */}
-      <span className="block min-w-0 flex-1 truncate typography-ui-label font-medium text-foreground/85">{label}</span>
+      <span className="block min-w-0 flex-1 truncate typography-ui-label font-medium oc-group-label">{label}</span>
     </button>
-  );
-  if (!space) return header;
-  return (
-    <>
-      <MobileSwipeActionsRow
-        actionsWidth={2 * ROW_ACTION_SLOT_WIDTH}
-        revealed={revealed}
-        onRevealedChange={setRevealed}
-        actions={<>
-          <MobileSwipeAction
-            icon="key"
-            label={t('spaces.group.access.giveAria', { label })}
-            revealed={revealed}
-            onClick={() => {
-              setRevealed(false);
-              useSpacesStore.getState().openAccessDialog(space.id);
-            }}
-          />
-          <MobileSwipeAction
-            icon="more-2"
-            label={t('spaces.actions.menuAria', { label })}
-            revealed={revealed}
-            onClick={() => {
-              setRevealed(false);
-              useSpacesStore.getState().openActionsSheet(space.id);
-            }}
-          />
-        </>}
-      >
-        {header}
-      </MobileSwipeActionsRow>
-      <div className="pb-1 pe-3" style={{ paddingInlineStart: geometry.textLeft(row.depth + 1) }}><SpaceGroupStatus spaceId={space.id} /></div>
-    </>
   );
 };
 
@@ -221,6 +204,7 @@ export const MobileFolderRow: React.FC<{
 }> = ({ row, geometry }) => {
   const { t } = useI18n();
   const expanded = row.forceExpanded || !row.collapsed;
+  const project = useProjectsStore((state) => (row.mixed ? state.projects.find((entry) => entry.id === row.projectId) : undefined));
   return (
     <button
       type="button"
@@ -238,7 +222,8 @@ export const MobileFolderRow: React.FC<{
     >
       {row.empty ? <span aria-hidden className="size-3.5 shrink-0" /> : <FileTreeChevron expanded={expanded} />}
       <Icon name={expanded && !row.empty ? 'folder-open' : 'folder'} className="mx-px size-3 shrink-0 text-muted-foreground" />
-      <span className="block min-w-0 flex-1 truncate typography-ui-label font-medium text-foreground/85">{row.displayName}</span>
+      <span className="block min-w-0 flex-1 truncate typography-ui-label font-medium oc-group-label">{row.displayName}</span>
+      {project ? <span className="min-w-0 shrink-[2] truncate typography-micro text-muted-foreground">{formatProjectLabel(project.label?.trim() || project.path)}</span> : null}
     </button>
   );
 };

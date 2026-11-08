@@ -39,7 +39,7 @@ test('both distro installs preserve an existing CLI and run two-window native va
     const install = job.steps.find((step) => step.name?.startsWith('Install and exercise'));
     assert(install.run.includes('CLI_SHA=$(sha256sum /usr/bin/openchamber)'));
     assert(install.run.includes('test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"'));
-    assert(install.run.includes('scripts/smoke-theme-control.mjs'));
+    assert(install.run.includes('scripts/smoke-theme-watch.mjs'));
   }
   for (const job of Object.values(workflow.jobs)) {
     for (const step of job.steps) {
@@ -59,7 +59,7 @@ test('Nobara validation installs its real release packages and preserves signatu
   assert.deepEqual(workflow.jobs.inventory.needs, ['build', 'arch', 'nobara']);
   const install = workflow.jobs.nobara.steps.find((step) => step.name === 'Install and exercise the Nobara RPM');
   assert(install.run.includes('test "$(sha256sum /usr/bin/openchamber)" = "$CLI_SHA"'));
-  assert(install.run.includes('scripts/smoke-theme-control.mjs'));
+  assert(install.run.includes('scripts/smoke-theme-watch.mjs'));
   assert(install.run.includes('docker run --rm --shm-size=1g'));
   assert(install.run.includes('ELECTRON_RUN_AS_NODE=1 /opt/OpenChamber/openchamber'));
 });

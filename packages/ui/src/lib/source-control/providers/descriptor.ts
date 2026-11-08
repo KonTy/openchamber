@@ -119,6 +119,10 @@ const descriptorSchema = z.object({
     issue: urlPatternsSchema,
     // A host's discussions, where it keeps them; a pattern this version cannot read leaves none.
     discussion: urlPatternsSchema.default([]).catch([]),
+    // Where a commit (`{sha}` in place of `{number}`) and a person (`/{user}`)
+    // live, for links in item text. A host that names none gets no such links.
+    commit: urlPatternsSchema.default([]).catch([]),
+    user: urlPatternsSchema.default([]).catch([]),
   }),
   // A feature an older server does not name is off.
   features: z.object({
@@ -127,6 +131,9 @@ const descriptorSchema = z.object({
     listStatuses: z.boolean().default(false),
     referencesAcross: z.boolean().default(false),
     startThread: z.boolean().default(false),
+    // The viewer's review draft on the host: comments on lines, sent with a verdict.
+    reviewDrafts: z.boolean().default(false),
+    reviewDraftFileComments: z.boolean().default(false),
     authorCanReview: z.boolean().default(false),
     projectUploads: z.boolean().default(false),
     issueCloseReason: z.boolean().default(false),
@@ -211,10 +218,10 @@ export const unknownProviderDescriptor = (id: string): SourceControlProviderDesc
     },
     auth: { methods: [], cliTransport: false },
     settings: { fields: [] },
-    urls: { changeRequest: [], issue: [], discussion: [] },
+    urls: { changeRequest: [], issue: [], discussion: [], commit: [], user: [] },
     features: {
       referenceSearch: false, referenceDetail: false, listStatuses: false, referencesAcross: false,
-      startThread: false, authorCanReview: false, projectUploads: false, issueCloseReason: false,
+      startThread: false, reviewDrafts: false, reviewDraftFileComments: false, authorCanReview: false, projectUploads: false, issueCloseReason: false,
       changeRequestTemplates: [], changeRequestPatch: false, reviewModel: 'verdict', revisions: false,
       submitRequirements: false, createByPush: false, branchHeads: true, discussions: false,
     },

@@ -54,17 +54,19 @@ export const verifyForkInventory = async ({ directory, version, sourceCommit }) 
       artifactPaths: artifacts.map((name) => path.join(directory, name)),
       expectedVersion: version,
     });
-    expected.push(...artifacts, manifest, `theme-control-${arch}.json`);
+    expected.push(...artifacts, manifest, `theme-watch-${arch}.json`);
   }
-  expected.push('theme-control-arch.json', 'theme-control-nobara.json', 'nobara-os-release', 'nobara-rpm-versions.txt');
+  expected.push('theme-watch-arch.json', 'theme-watch-nobara.json', 'nobara-os-release', 'nobara-rpm-versions.txt');
   assert.deepEqual((await readdir(directory)).sort(), expected.sort(), 'Release inventory is incomplete or contains unexpected files');
   for (const arch of ['x64', 'arm64', 'arch', 'nobara']) {
-    const result = JSON.parse(await readFile(path.join(directory, `theme-control-${arch}.json`), 'utf8'));
+    const result = JSON.parse(await readFile(path.join(directory, `theme-watch-${arch}.json`), 'utf8'));
     assert.equal(result.platform, 'linux');
     assert.equal(result.architecture, arch === 'arm64' ? 'arm64' : 'x64');
     assert.equal(result.nativeTransparency, true);
-    assert(result.checks.includes('two-window application, persistence and same-ID opacity reload'));
-    assert(result.checks.includes('missing themes and zero opacity refused'));
+    assert(result.checks.includes('two-window same-ID palette and opacity reload without selection writes'));
+    assert(result.checks.includes('invalid custom theme skipped'));
+    assert(result.checks.includes('invalid selected theme retains last valid palette and recovers'));
+    assert(result.checks.includes('removed theme API actions refused'));
     assert.equal(result.error, undefined);
   }
   assert.match(await readFile(path.join(directory, 'nobara-os-release'), 'utf8'), /^ID=nobara$/m);

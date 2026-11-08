@@ -2,15 +2,6 @@ import express from 'express';
 import { asControlError } from './error.js';
 
 export const registerOpenChamberControlRoutes = (app, { controlService }) => {
-  app.post('/api/openchamber/theme/result', express.json({ limit: '4kb' }), (req, res) => {
-    try {
-      return res.json(controlService.answerTheme(req.body));
-    } catch (error) {
-      const controlError = asControlError(error, 'Could not confirm the theme request');
-      return res.status(controlError.statusCode).json({ error: controlError.message });
-    }
-  });
-
   app.post('/api/openchamber/control', express.json({ limit: '1mb' }), async (req, res) => {
     const controller = new AbortController();
     const abortOnDisconnect = () => {
@@ -50,6 +41,17 @@ export const registerOpenChamberControlRoutes = (app, { controlService }) => {
       return res.json(controlService.answerPage(req.body ?? {}));
     } catch (error) {
       const controlError = asControlError(error, 'Could not deliver the answer');
+      return res.status(controlError.statusCode).json({ error: controlError.message });
+    }
+  });
+
+  // The user saved or declined a secret an agent asked for (secret.request).
+  // The body carries the secret: it is never logged or echoed back.
+  app.post('/api/openchamber/secret/answer', express.json({ limit: '64kb' }), async (req, res) => {
+    try {
+      return res.json(await controlService.answerSecret(req.body ?? {}));
+    } catch (error) {
+      const controlError = asControlError(error, 'Could not save the secret');
       return res.status(controlError.statusCode).json({ error: controlError.message });
     }
   });

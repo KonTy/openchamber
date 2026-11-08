@@ -1,7 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getSettingsSurface } from '@/lib/settings/surface';
+import { getRuntimeKey, isTransientRuntimeKey, subscribeRuntimeEndpointWillChange } from '@/lib/runtime-switch';
 import type { SettingsSurface } from '@/lib/settings/registry';
+import {
+  DEFAULT_SIDEBAR_SECTIONS,
+  hiddenSidebarSectionsSchema,
+  sidebarPinListsSchema,
+  sidebarSectionsSchema,
+  type SidebarPinList,
+  type SidebarSectionEntry,
+} from '@/lib/sidebarSections';
 
 type ProjectSortOrder = 'manual' | 'a-z' | 'z-a' | 'date-added' | 'recent';
 // Worktree groups inside a project. 'recent' floats worktrees with the latest
@@ -51,6 +60,29 @@ type SessionDisplayStore = {
    * full-width rows have the room.
    */
   detailedZoneRows: boolean;
+  /**
+   * Worktrees named by their branch (a space by its own name) rather than by
+   * their task; the other name goes under it. Off by default.
+   */
+  worktreeNameByBranch: boolean;
+  /**
+   * The sidebar's sections in order, the built-in ones included
+   * (`lib/sidebarSections.ts`). Shared by every surface.
+   */
+  sections: SidebarSectionEntry[];
+  /** The named pin lists Pin to files works into. Shared by every surface. */
+  pinLists: SidebarPinList[];
+  /** The user's sections this surface hides; built-in ones keep their own show toggles. */
+  hiddenSections: string[];
+  /**
+   * The instance the sections, pin lists and hidden sections came from. They
+   * belong to that instance: switching to another drops them until its own
+   * settings arrive, so one server's sections never show on another.
+   */
+  sectionsOwner: string | null;
+  setSections: (sections: SidebarSectionEntry[]) => void;
+  setPinLists: (lists: SidebarPinList[]) => void;
+  setHiddenSections: (ids: string[]) => void;
   // VS Code only: the compact webview keeps archived buckets inline because it
   // has no room for the full Archive page. Web/desktop ignore this flag and
   // always route archived sessions to the Archive page instead.
@@ -60,6 +92,7 @@ type SessionDisplayStore = {
   setShowWorkSection: (show: boolean) => void;
   setShowPinnedSection: (show: boolean) => void;
   setDetailedZoneRows: (detailed: boolean) => void;
+  setWorktreeNameByBranch: (byBranch: boolean) => void;
   setShowArchivedSessions: (show: boolean) => void;
   toggleArchivedSessions: () => void;
   setProjectSortOrder: (order: ProjectSortOrder) => void;
@@ -150,6 +183,15 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
       // state keeps an earlier choice.
       showPinnedSection: true,
       detailedZoneRows: getSettingsSurface() === 'mobile',
+      worktreeNameByBranch: false,
+      sections: [...DEFAULT_SIDEBAR_SECTIONS],
+      pinLists: [],
+      hiddenSections: [],
+      sectionsOwner: null,
+      // The same rules as a stored value: built-in sections kept, limits held.
+      setSections: (sections) => set({ sections: sidebarSectionsSchema.parse(sections), sectionsOwner: getRuntimeKey() }),
+      setPinLists: (lists) => set({ pinLists: sidebarPinListsSchema.parse(lists), sectionsOwner: getRuntimeKey() }),
+      setHiddenSections: (ids) => set({ hiddenSections: hiddenSidebarSectionsSchema.parse(ids), sectionsOwner: getRuntimeKey() }),
       // Default to HIDDEN so the pre-hydration state matches the quiet/safe
       // option: archived sessions must never flash visible on startup and then
       // disappear once the persisted preference rehydrates.
@@ -159,6 +201,7 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
       setShowWorkSection: (show) => set({ showWorkSection: show }),
       setShowPinnedSection: (show) => set({ showPinnedSection: show }),
       setDetailedZoneRows: (detailed) => set({ detailedZoneRows: detailed }),
+      setWorktreeNameByBranch: (byBranch) => set({ worktreeNameByBranch: byBranch }),
       setShowArchivedSessions: (show) => set({ showArchivedSessions: show }),
       toggleArchivedSessions: () => set((state) => ({ showArchivedSessions: !state.showArchivedSessions })),
       setProjectSortOrder: (order) => set({ projectSortOrder: order }),
@@ -177,6 +220,14 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
       // v9→v10 drops showRecentSection (Recent is gone).
       // v11→v12 turns two-line rows on for a phone that was on List.
       migrate: migrateSessionDisplayState,
+      // Sections cached by another build (an older one before a filter field
+      // existed) are read through the same rules as the stored setting.
+      merge: (persisted, current) => {
+        // SAFETY: `migrate` has already brought the stored state to this version's shape.
+        const state = (persisted ?? {}) as Partial<SessionDisplayStore>;
+        const sections = sidebarSectionsSchema.safeParse(state.sections ?? current.sections);
+        return { ...current, ...state, sections: sections.success ? sections.data : [...DEFAULT_SIDEBAR_SECTIONS] };
+      },
     },
   ),
 );
@@ -184,3 +235,18 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
 export type {
   ProjectSortOrder
 };
+
+// The user's sections, pin lists and hidden sections are another instance's
+// once the client switches: back to the built-in sections until the new
+// instance's settings arrive (an instance without any keeps them).
+/** Drops the user's sections when they came from another instance than `runtimeKey`. */
+export const dropSectionsOfOtherInstance = (runtimeKey: string): void => {
+  const state = useSessionDisplayStore.getState();
+  if (state.sectionsOwner === null || state.sectionsOwner === runtimeKey || isTransientRuntimeKey(runtimeKey)) return;
+  useSessionDisplayStore.setState({ sections: [...DEFAULT_SIDEBAR_SECTIONS], pinLists: [], hiddenSections: [], sectionsOwner: null });
+};
+subscribeRuntimeEndpointWillChange(({ runtimeKey }) => dropSectionsOfOtherInstance(runtimeKey));
+// The stored copy may be another instance's when the app starts on a different
+// one. Checked once the boot code has set the instance (it runs in the same
+// task as this module), so a window opened on a saved host keeps its own.
+queueMicrotask(() => dropSectionsOfOtherInstance(getRuntimeKey()));

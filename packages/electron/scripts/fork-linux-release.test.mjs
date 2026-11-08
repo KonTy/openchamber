@@ -33,9 +33,9 @@ const writeInventory = async (directory) => {
   await fs.writeFile(path.join(directory, 'nobara-os-release'), 'ID=nobara\nVERSION_ID=44\n');
   await fs.writeFile(path.join(directory, 'nobara-rpm-versions.txt'), 'nobara-release-44-6.fc44.noarch\n');
   for (const arch of ['x64', 'arm64', 'arch', 'nobara']) {
-    await fs.writeFile(path.join(directory, `theme-control-${arch}.json`), JSON.stringify({
+    await fs.writeFile(path.join(directory, `theme-watch-${arch}.json`), JSON.stringify({
       platform: 'linux', architecture: arch === 'arm64' ? 'arm64' : 'x64', nativeTransparency: true,
-      checks: ['two-window application, persistence and same-ID opacity reload', 'missing themes and zero opacity refused'],
+      checks: ['two-window same-ID palette and opacity reload without selection writes', 'invalid custom theme skipped', 'invalid selected theme retains last valid palette and recovers', 'removed theme API actions refused'],
     }));
   }
 };
@@ -98,7 +98,7 @@ test('inventory rejects omitted assets, unexpected files and failed or wrong-arc
     if (change === 'missing') await fs.unlink(path.join(directory, 'PKGBUILD'));
     if (change === 'extra') await fs.writeFile(path.join(directory, 'unexpected.txt'), 'unexpected');
     if (change === 'failed' || change === 'architecture') {
-      const name = path.join(directory, 'theme-control-arch.json');
+      const name = path.join(directory, 'theme-watch-arch.json');
       const report = JSON.parse(await fs.readFile(name, 'utf8'));
       if (change === 'failed') report.error = 'native fixture failed';
       else report.architecture = 'arm64';

@@ -40,7 +40,7 @@ describe('source-control provider descriptors', () => {
     expect(parsed?.settings.fields[0]?.kind).toBe('unknown');
     expect(parsed?.features).toEqual({
       referenceSearch: true, referenceDetail: false, listStatuses: false, referencesAcross: false,
-      startThread: false, authorCanReview: false, projectUploads: false, issueCloseReason: false,
+      startThread: false, reviewDrafts: false, reviewDraftFileComments: false, authorCanReview: false, projectUploads: false, issueCloseReason: false,
       // Every server older than the field served change-request diffs.
       changeRequestTemplates: [], changeRequestPatch: true, reviewModel: 'verdict', revisions: false,
       submitRequirements: false, createByPush: false, branchHeads: true, discussions: false,
@@ -130,7 +130,7 @@ describe('source-control provider descriptors', () => {
     expect(fallback.terminology).toMatchObject({ changeRequest: 'pullRequest', changeRequestPrefix: '#', issuePrefix: '#' });
     expect(fallback.icon.sprite).toBe('git-branch');
     expect(fallback.auth.methods).toEqual([]);
-    expect(fallback.urls).toEqual({ changeRequest: [], issue: [], discussion: [] });
+    expect(fallback.urls).toEqual({ changeRequest: [], issue: [], discussion: [], commit: [], user: [] });
     // `branchHeads` is how every host has behaved, not a feature turned on.
     const { branchHeads, reviewModel, ...features } = fallback.features;
     expect(Object.values(features).filter((value) => value === true)).toEqual([]);

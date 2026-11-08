@@ -2,11 +2,14 @@ import { useSessionTabsStore } from '@/stores/useSessionTabsStore';
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useUIStore } from '@/stores/useUIStore';
+import { isChatDirectoryPath } from '@/lib/chatDirectories';
 
 /**
- * Activate the nth (0-based) header session tab, counting only tabs whose
- * session is present in the loaded session list — the same rule the strip
- * uses for rendering, so the digit matches what the user sees.
+ * Activate the nth (0-based; negative counts from the end) header session
+ * tab, counting only tabs whose session is present in the loaded session
+ * list — the same rule the strip uses for rendering, so the digit matches
+ * what the user sees.
  */
 export const activateSessionTabByIndex = (index: number): boolean => {
   const { tabIds } = useSessionTabsStore.getState();
@@ -14,7 +17,8 @@ export const activateSessionTabByIndex = (index: number): boolean => {
     useGlobalSessionsStore.getState().activeSessions.map((session) => [session.id, session] as const),
   );
   const renderable = tabIds.filter((id) => sessionsById.has(id));
-  const session = renderable[index] ? sessionsById.get(renderable[index]) : null;
+  const id = renderable.at(index);
+  const session = id ? sessionsById.get(id) : null;
   if (!session) return false;
   useSessionUIStore.getState().setCurrentSession(session.id, resolveGlobalSessionDirectory(session));
   return true;
@@ -65,7 +69,11 @@ export const closeSessionTabAndActivateNeighbour = (sessionId: string): void => 
     if (neighbour) {
       setCurrentSession(neighbour.id, resolveGlobalSessionDirectory(neighbour));
     } else {
-      openNewSessionDraft();
+      // With tabs per workspace the new draft stays in the workspace whose
+      // last tab closed, so the strip keeps showing its set.
+      const directory = useSessionUIStore.getState().currentSessionDirectory;
+      const stayInWorkspace = useUIStore.getState().sessionTabsPerWorkspace && directory && !isChatDirectoryPath(directory);
+      openNewSessionDraft(stayInWorkspace ? { directoryOverride: directory } : undefined);
     }
   }
 

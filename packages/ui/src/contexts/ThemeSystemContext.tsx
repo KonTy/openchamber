@@ -25,6 +25,7 @@ import { runtimeFetch } from '@/lib/runtime-fetch';
 import { themeSchema, themeListSchema, type ThemeDefinition } from '@/lib/theme/definition';
 import { ThemeImportError } from '@/lib/theme/importErrors';
 import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
+import { subscribeOpenchamberEvents } from '@/lib/openchamberEvents';
 import {
   adoptThemePreferencesForRuntime,
   resolveThemePreferencesForRuntime,
@@ -224,7 +225,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
 
   const reloadCustomThemes = useCallback(async () => {
     if (typeof window === 'undefined' || isVSCode) {
-      return null;
+      return;
     }
 
     const runtimeKey = getRuntimeKey();
@@ -241,22 +242,20 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
 
       if (res.status === 401) {
         // UI auth gate will handle prompting; avoid noisy retries here.
-        return null;
+        return;
       }
 
       if (!res.ok) {
         console.warn('Could not reload custom themes:', res.status);
-        return null;
+        return;
       }
 
       const payload = await res.json();
-      if (request !== customThemesRequestRef.current || runtimeKey !== getRuntimeKey()) return null;
+      if (request !== customThemesRequestRef.current || runtimeKey !== getRuntimeKey()) return;
       const normalized = themeListSchema.parse(payload?.themes);
       setCustomThemes(normalized);
-      return normalized;
     } catch (error) {
       console.warn('Could not reload custom themes:', error);
-      return null;
     } finally {
       if (request === customThemesRequestRef.current && runtimeKey === getRuntimeKey()) {
         setCustomThemesLoading(false);
@@ -267,6 +266,15 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   useEffect(() => {
     void reloadCustomThemes();
   }, [reloadCustomThemes]);
+
+  // The server announces edits to its themes folder; a reconnect may have
+  // missed one, so the themes are read again then too.
+  useEffect(() => {
+    if (isVSCode) return;
+    return subscribeOpenchamberEvents((event) => {
+      if (event.type === 'themes-changed' || event.type === 'event-stream-ready') void reloadCustomThemes();
+    });
+  }, [isVSCode, reloadCustomThemes]);
 
   useEffect(() => {
     if (isVSCode || customThemesLoading) return;

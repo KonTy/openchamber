@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BrowserControlError } from '../browser-control/broker.js';
 import { OpenChamberControlError } from './error.js';
 import { registerOpenChamberControlRoutes } from './routes.js';
+import { createOpenChamberControlService } from './service.js';
 
 const createApp = (execute, answerPage = vi.fn()) => {
   const app = express();
@@ -13,6 +14,23 @@ const createApp = (execute, answerPage = vi.fn()) => {
 };
 
 describe('OpenChamber control route', () => {
+  it.each(['theme.set', 'theme.capabilities'])('rejects removed %s actions through the real service', async (action) => {
+    const app = express();
+    registerOpenChamberControlRoutes(app, { controlService: createOpenChamberControlService({}) });
+    const response = await request(app)
+      .post('/api/openchamber/control')
+      .send({ action, input: { id: 'openchamber-dark' } })
+      .expect(400);
+    expect(response.body.error).toBe(`Unsupported OpenChamber action: ${action}`);
+  });
+
+  it('has no theme result callback route', async () => {
+    await request(createApp(vi.fn()))
+      .post('/api/openchamber/theme/result')
+      .send({})
+      .expect(404);
+  });
+
   it('is a thin adapter over the control service', async () => {
     const execute = vi.fn(async () => ({ projects: [] }));
     const response = await request(createApp(execute))

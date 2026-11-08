@@ -13,6 +13,7 @@ import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { glyphInner } from "./brand/geometry.mjs"
+import { openInAppGlyphs } from "./icons/open-in-apps.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, "..")
@@ -20,8 +21,18 @@ const remixPath = resolve(repoRoot, "node_modules/@remixicon/react/index.mjs")
 const outPath = resolve(repoRoot, "packages/ui/src/components/icon/sprite.ts")
 
 const customIconData = new Map([
+  ...openInAppGlyphs,
   // The OpenChamber glyph from scripts/brand, scaled from its 32 grid to 24.
-  ["openchamber", `<g transform="scale(0.75)">${glyphInner()}</g>`],
+  // Its brand stroke turns hairline at row size next to Remixicon's 2px
+  // lines, so the sprite draws it heavier.
+  ["openchamber", `<g transform="scale(0.75)">${glyphInner({ stroke: 2.1 })}</g>`],
+  // OpenCode's mark (packages/identity/mark.svg in the OpenCode repository):
+  // a 4:5 frame with the lower half of its opening filled, drawn as a 2px line
+  // to sit beside Remixicon's line glyphs.
+  [
+    "opencode",
+    `<path fill="none" stroke="currentColor" stroke-width="2" d="M6 4.5h12v15H6Z"/><path fill="currentColor" d="M9 10.5h6v6H9Z"/>`,
+  ],
   // Command Code — corner squares + center square (official logo geometry).
   [
     "command-code",
