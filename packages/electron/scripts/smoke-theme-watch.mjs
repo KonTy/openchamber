@@ -85,9 +85,10 @@ const clients = [];
 const checks = [];
 const assetFailures = [];
 const latenciesMs = [];
+const settingsWrites = [];
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const until = async (probe, description) => {
-  const deadline = Date.now() + 120_000;
+const until = async (probe, description, timeoutMs = 120_000) => {
+  const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (startupError) throw startupError;
     assert.equal(assetFailures.length, 0, JSON.stringify(assetFailures));
@@ -123,6 +124,7 @@ const observe = async (target) => {
   await client.connect();
   const assets = new Map();
   client.on('Network.requestWillBeSent', ({ request: resource, requestId }) => {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(resource.method) && new URL(resource.url).pathname === '/api/config/settings') settingsWrites.push(resource.method);
     if (resource.url.startsWith('openchamber-ui://app/assets/')) assets.set(requestId, resource.url);
     if (resource.url.includes('/api/openchamber/theme/result')) assetFailures.push({ url: resource.url, errorText: 'Removed theme callback was called' });
   });
@@ -143,10 +145,16 @@ const snapshot = (client) => evaluate(client, `(() => {
   const context = canvas.getContext('2d');
   context.fillStyle = style.getPropertyValue('--background').trim();
   context.fillRect(0, 0, 1, 1);
+  const alpha = context.getImageData(0, 0, 1, 1).data[3];
+  context.clearRect(0, 0, 1, 1);
+  context.fillStyle = style.color;
+  context.fillRect(0, 0, 1, 1);
   return {
     selected: JSON.parse(localStorage.getItem('openchamber.theme.v2:local')),
     primary: style.getPropertyValue('--primary-base').trim(),
-    alpha: context.getImageData(0, 0, 1, 1).data[3],
+    alpha,
+    foregroundAlpha: context.getImageData(0, 0, 1, 1).data[3],
+    rootOpacity: style.opacity,
     transparentWindow: window.__OPENCHAMBER_ELECTRON__?.transparentWindow === true,
   };
 })()`);
@@ -154,7 +162,7 @@ try {
   const port = await until(async () => {
     try { return Number((await fs.readFile(path.join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]); }
     catch (error) { if (error.code === 'ENOENT') return null; throw error; }
-  }, 'the isolated CDP port');
+  }, 'the isolated CDP port', 600_000);
   const pages = async () => (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   const target = await until(async () => (await pages()).find(isApplicationPage), 'the application renderer');
   const client = await observe(target);
@@ -193,6 +201,8 @@ try {
     latenciesMs.push(Date.now() - started);
     for (const state of await Promise.all(clients.map(snapshot))) {
       assert.equal(state.transparentWindow, expectedAlpha);
+      assert.equal(state.foregroundAlpha, 255);
+      assert.equal(state.rootOpacity, '1');
       assert.equal(state.selected.darkThemeId, fixture.metadata.id);
       assert.equal(state.selected.themeMode, 'dark');
     }
@@ -217,6 +227,47 @@ try {
   await until(async () => (await Promise.all(clients.map(snapshot))).every((state) =>
     state.primary === fixture.colors.primary.base && state.alpha === Math.round((expectedAlpha ? 0.8 : 1) * 255)), 'recovery after an invalid selected theme edit');
   checks.push('invalid selected theme retains last valid palette and recovers');
+  const settingsFile = path.join(data, 'settings.json');
+  const preferencesFile = path.join(data, 'preferences.json');
+  const selectedInBoth = async (id, mode) => (await Promise.all(clients.map(snapshot))).every((state) =>
+    state.selected?.themeMode === mode && state.selected[`${mode}ThemeId`] === id);
+  const outsideSettings = { ...JSON.parse(await fs.readFile(settingsFile, 'utf8')), themeId: 'openchamber-light', useSystemTheme: false };
+  settingsWrites.length = 0;
+  const selectionStarted = Date.now();
+  await fs.writeFile(settingsFile, JSON.stringify(outsideSettings));
+  await until(() => selectedInBoth('openchamber-light', 'light'), 'both windows selecting a legacy settings theme without a variant edit');
+  latenciesMs.push(Date.now() - selectionStarted);
+  checks.push('two-window settings selection without theme APIs');
+  await fs.writeFile(settingsFile, '{');
+  await delay(3000);
+  assert(await selectedInBoth('openchamber-light', 'light'));
+  const lastValid = await request(client, '/api/config/settings?surface=desktop');
+  assert.equal(lastValid.status, 200);
+  assert.equal(lastValid.body.themeId, 'openchamber-light');
+  assert.equal(await fs.readFile(settingsFile, 'utf8'), '{');
+  await fs.writeFile(settingsFile, JSON.stringify({ ...outsideSettings, themeId: fixture.metadata.id }));
+  await until(() => selectedInBoth(fixture.metadata.id, 'dark'), 'recovery after a partial settings save');
+  checks.push('partial settings JSON retains selection and recovers');
+  const preferences = JSON.parse(await fs.readFile(preferencesFile, 'utf8'));
+  const externalLight = structuredClone(alternate);
+  externalLight.metadata.id = 'fixture-external-light';
+  externalLight.config = { ...externalLight.config, backgroundOpacity: 0.6 };
+  preferences.fields.themeId.surfaces = {
+    ...preferences.fields.themeId.surfaces,
+    desktop: { value: externalLight.metadata.id, updatedAt: Date.now() },
+  };
+  await fs.writeFile(preferencesFile, JSON.stringify(preferences));
+  await delay(3000);
+  assert(await selectedInBoth(fixture.metadata.id, 'dark'));
+  await fs.writeFile(path.join(themesDir, 'external-light.json'), JSON.stringify(externalLight));
+  await until(() => selectedInBoth(externalLight.metadata.id, 'light'), 'a pending per-surface selection applying when its palette arrives');
+  const webSettings = await request(client, '/api/config/settings?surface=web');
+  assert.equal(webSettings.body.themeId, fixture.metadata.id);
+  assert.deepEqual(settingsWrites, []);
+  checks.push('per-surface selection waits for its palette without UI writeback');
+  await client.send('Page.enable');
+  const screenshot = await client.send('Page.captureScreenshot', { format: 'png' });
+  await fs.writeFile(path.join(root, 'settings-selection.png'), Buffer.from(screenshot.data, 'base64'));
   await fs.writeFile(path.resolve(values.report), JSON.stringify({
     platform: process.platform, architecture: process.arch, framed: values.framed,
     ui: hmr ? 'hmr' : 'bundled', nativeTransparency: expectedAlpha,

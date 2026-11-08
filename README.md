@@ -7,9 +7,10 @@ The Linux desktop updater uses releases from
 canonical upstream feed. Upstream project information follows below.
 
 The fork's theme-control API has been removed. Custom theme file changes reload
-through upstream's theme-folder watcher. External settings-file edits do not
-yet select a theme in a running app, so the existing API-based smplOS bridge
-requires an update before it can drive this build.
+through upstream's theme-folder watcher. Valid external settings-file edits
+refresh running server-backed clients and select themes; incomplete JSON keeps
+the last valid settings. smplOS must publish palette files and desktop selection
+in v1 `preferences.json`; an API-based bridge cannot drive this build.
 
 [![GitHub stars](https://img.shields.io/github/stars/openchamber/openchamber?style=flat&labelColor=100F0F&color=66800B)](https://github.com/openchamber/openchamber/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/openchamber/openchamber?style=flat&labelColor=100F0F&color=205EA6)](https://github.com/openchamber/openchamber/releases/latest)

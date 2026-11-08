@@ -33,6 +33,10 @@ or their runtime owner change. Reloading a palette still updates splash colors,
 but must not republish the old selection: another window may already have
 selected the next theme while this window was loading its colors.
 
+### Why settings adoption waits for an explicitly selected palette
+
+With system following off, a recognized `themeId` selects its actual light/dark variant even when a saved `themeVariant` is stale. An unavailable explicit ID or active-variant ID retains the current selection until a palette reload supplies it; local selection intent, another window's selection and runtime switching cancel that pending adoption. Unrelated save echoes do not cancel it. Selecting from a file is an adopting sync, not a save echo, and must not write the selection back.
+
 ### Why dropdown picks switch modes only for a hidden variant
 
 Picking a light or dark theme must make that pick visible. When its variant is

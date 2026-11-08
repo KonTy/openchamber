@@ -756,6 +756,22 @@ describe('updateDesktopSettings', () => {
     }
   });
 
+  test('a file invalidation starts a fresh read and prevents an older response refilling the cache', async () => {
+    const oldRead = deferred<{ settings: SettingsPayload; source: 'web' | 'vscode' }>();
+    let calls = 0;
+    registerSettingsApi(async (changes) => changes, () => {
+      calls += 1;
+      return calls === 1 ? oldRead.promise : Promise.resolve({ settings: { themeId: 'new' }, source: 'web' });
+    });
+    invalidateSettingsCache();
+    const stale = loadDesktopSettings();
+    invalidateSettingsCache();
+    expect((await loadDesktopSettings())?.themeId).toBe('new');
+    oldRead.resolve({ settings: { themeId: 'old' }, source: 'web' });
+    await stale;
+    expect((await loadDesktopSettings())?.themeId).toBe('new');
+    expect(calls).toBe(2);
+  });
   test('does not broadcast a stale load after a newer project update has saved', async () => {
     const loadedSettings = deferred<{ settings: SettingsPayload; source: 'web' | 'vscode' }>();
     registerSettingsApi(async (changes) => changes as SettingsPayload, () => loadedSettings.promise);

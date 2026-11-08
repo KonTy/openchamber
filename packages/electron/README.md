@@ -44,7 +44,7 @@ application bootstrap before the fixture atomically replaces the selected
 custom theme's file. It checks both windows' palette and effective background
 alpha, unchanged selection preferences, invalid theme rejection, and refusal
 of the removed theme-control actions. It records reload latency separately
-from compositor rendering. The API-based smplOS bridge is not run by this fixture.
+from compositor rendering. The smplOS bridge is not run by this fixture.
 Use `--development --bundled` to exercise built assets through the desktop UI
 scheme instead of HMR. An invalid edit to a previously loaded theme retains its
 last valid palette; the fixture also verifies recovery after the file is fixed.

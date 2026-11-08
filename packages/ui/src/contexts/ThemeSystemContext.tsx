@@ -140,6 +140,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   // another window's theme never produce a write (see the 2026-08-30 theme
   // flip-flop: a fresh client used to PUT its default theme on load).
   const themeWriteIntentRef = useRef(false);
+  const pendingSettingsThemeRef = useRef<{ runtimeKey: string; targetId: string; detail: SettingsSyncedDetail } | null>(null);
 
   const availableThemes = useMemo(() => {
     const merged: Theme[] = [];
@@ -295,6 +296,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   useEffect(() => subscribeRuntimeEndpointChanged((detail) => {
     if (detail.runtimeKey === detail.previousRuntimeKey || isVSCode) return;
     themeWriteIntentRef.current = false;
+    pendingSettingsThemeRef.current = null;
     customThemesRequestRef.current += 1;
     themeRuntimeGenerationRef.current += 1;
     setCustomThemes([]);
@@ -451,7 +453,11 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
         return;
       }
 
-      setPreferences((prev) => resolveThemePreferencesFromStorageEvent(event.key, getRuntimeKey(), prev) ?? prev);
+      setPreferences((prev) => {
+        const next = resolveThemePreferencesFromStorageEvent(event.key, getRuntimeKey(), prev);
+        if (next) pendingSettingsThemeRef.current = null;
+        return next ?? prev;
+      });
     };
 
     window.addEventListener('storage', handleStorage);
@@ -492,6 +498,35 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     })();
   }, [currentTheme.metadata.variant, ensureThemeById, isDesktopShell, preferences.themeMode, preferences.lightThemeId, preferences.darkThemeId]);
 
+  const applySyncedTheme = useCallback((detail: SettingsSyncedDetail): boolean => {
+    if (!detail.adoptTheme) {
+      return true;
+    }
+    const selectedTheme = availableThemes.find((theme) => theme.metadata.id === detail.settings.themeId);
+    const variant = detail.settings.useSystemTheme === false
+      ? selectedTheme?.metadata.variant ?? detail.settings.themeVariant ?? currentTheme.metadata.variant
+      : currentTheme.metadata.variant;
+    const targetId = (detail.settings.useSystemTheme === false ? detail.settings.themeId : undefined)
+      ?? detail.settings[`${variant}ThemeId`];
+    if (targetId && !availableThemes.some((theme) => theme.metadata.id === targetId)) {
+      pendingSettingsThemeRef.current = { runtimeKey: getRuntimeKey(), targetId, detail };
+      return false;
+    }
+    pendingSettingsThemeRef.current = null;
+    setPreferences((prev) => resolveThemePreferencesFromSettingsSync(detail, prev, {
+      selectedTheme, activeVariant: currentTheme.metadata.variant,
+    }) ?? prev);
+    return true;
+  }, [availableThemes, currentTheme.metadata.variant]);
+
+  useEffect(() => {
+    const pending = pendingSettingsThemeRef.current;
+    if (!pending || pending.runtimeKey !== getRuntimeKey()) return;
+    if (availableThemes.some((theme) => theme.metadata.id === pending.targetId)) {
+      applySyncedTheme(pending.detail);
+    }
+  }, [applySyncedTheme, availableThemes]);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -504,12 +539,15 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
         return;
       }
 
-      setPreferences((prev) => resolveThemePreferencesFromSettingsSync(detail, prev) ?? prev);
+      if (!applySyncedTheme(detail)) {
+        console.warn('Settings selected an unavailable theme; retaining the current theme until its file loads.');
+        void reloadCustomThemes();
+      }
     };
 
     window.addEventListener('openchamber:settings-synced', handleSettingsSynced);
     return () => window.removeEventListener('openchamber:settings-synced', handleSettingsSynced);
-  }, []);
+  }, [applySyncedTheme, reloadCustomThemes]);
 
   const setTheme = useCallback(
     (themeId: string) => {
@@ -517,13 +555,14 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       if (!theme) {
         return;
       }
-
+      pendingSettingsThemeRef.current = null;
       setPreferences((prev) => {
         if (theme.metadata.variant === 'dark') {
           if (prev.darkThemeId === theme.metadata.id && prev.themeMode === 'dark') {
             return prev;
           }
           themeWriteIntentRef.current = true;
+          pendingSettingsThemeRef.current = null;
           return {
             ...prev,
             darkThemeId: theme.metadata.id,
@@ -536,6 +575,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
         }
 
         themeWriteIntentRef.current = true;
+        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           lightThemeId: theme.metadata.id,
@@ -547,11 +587,13 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   );
 
   const setThemeModeHandler = useCallback((mode: ThemeMode) => {
+    pendingSettingsThemeRef.current = null;
     if (preferences.themeMode === mode) {
       return;
     }
 
     themeWriteIntentRef.current = true;
+    pendingSettingsThemeRef.current = null;
     setPreferences((prev) => ({
       ...prev,
       themeMode: mode,
@@ -560,12 +602,14 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
 
   const setSystemPreferenceHandler = useCallback(
     (use: boolean) => {
+      pendingSettingsThemeRef.current = null;
       if (use) {
         setPreferences((prev) => {
           if (prev.themeMode === 'system') {
             return prev;
           }
           themeWriteIntentRef.current = true;
+          pendingSettingsThemeRef.current = null;
           return {
             ...prev,
             themeMode: 'system',
@@ -581,6 +625,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
           return prev;
         }
         themeWriteIntentRef.current = true;
+        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           themeMode: fallbackMode,
@@ -599,13 +644,14 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       if (!theme) {
         return;
       }
-
+      pendingSettingsThemeRef.current = null;
       setPreferences((prev) => {
         const themeMode = currentTheme.metadata.variant === 'light' ? prev.themeMode : 'light';
         if (prev.lightThemeId === theme.metadata.id && prev.themeMode === themeMode) {
           return prev;
         }
         themeWriteIntentRef.current = true;
+        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           lightThemeId: theme.metadata.id,
@@ -625,13 +671,14 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       if (!theme) {
         return;
       }
-
+      pendingSettingsThemeRef.current = null;
       setPreferences((prev) => {
         const themeMode = currentTheme.metadata.variant === 'dark' ? prev.themeMode : 'dark';
         if (prev.darkThemeId === theme.metadata.id && prev.themeMode === themeMode) {
           return prev;
         }
         themeWriteIntentRef.current = true;
+        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           darkThemeId: theme.metadata.id,
@@ -672,6 +719,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       // A choice made while the upload was pending takes precedence.
       if (!activate || current !== initialPreferences || importRequest !== themeImportRequestRef.current) return current;
       themeWriteIntentRef.current = true;
+      pendingSettingsThemeRef.current = null;
       return {
         ...current,
         themeMode: theme.metadata.variant,
@@ -695,6 +743,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     setPreferences((current) => {
       if (current.lightThemeId !== themeId && current.darkThemeId !== themeId) return current;
       themeWriteIntentRef.current = true;
+      pendingSettingsThemeRef.current = null;
       return {
         ...current,
         lightThemeId: current.lightThemeId === themeId ? fallbackThemeForVariant('light').metadata.id : current.lightThemeId,

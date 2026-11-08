@@ -72,6 +72,25 @@ describe('openchamber events', () => {
     }
   });
 
+  test('accepts settings-file invalidations only with a known source and changed keys', async () => {
+    const { subscribeOpenchamberEvents } = await import('./openchamberEvents');
+    const received: Parameters<Parameters<typeof subscribeOpenchamberEvents>[0]>[0][] = [];
+    const unsubscribe = subscribeOpenchamberEvents((event) => received.push(event));
+    try {
+      const source = MockEventSource.instances[0];
+      for (const properties of [
+        { source: 'settings', changedKeys: ['themeId'] },
+        { source: 'preferences', changedKeys: ['darkThemeId'] },
+        { source: 'unknown', changedKeys: ['themeId'] },
+        { source: 'settings', changedKeys: [] },
+        { source: 'preferences', changedKeys: [1] },
+      ]) source.onmessage?.({ data: JSON.stringify({ type: 'openchamber:settings-changed', properties }) });
+      expect(received).toEqual([
+        { type: 'settings-changed', source: 'settings', changedKeys: ['themeId'] },
+        { type: 'settings-changed', source: 'preferences', changedKeys: ['darkThemeId'] },
+      ]);
+    } finally { unsubscribe(); }
+  });
   test('native mobile sends proxy headers on the HTTP event stream and aborts on unsubscribe', async () => {
     Object.assign(window, { Capacitor: { isNativePlatform: () => true } });
     setRuntimeExtraHeaders({ 'X-Proxy': 'fixture-secret' });

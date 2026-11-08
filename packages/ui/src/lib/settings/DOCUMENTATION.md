@@ -43,6 +43,12 @@
 
 ## Decisions
 
+### Why file notifications refresh through persistence
+
+Server-backed web, Electron, hosted mobile and Capacitor surfaces use the existing authenticated control stream to invalidate the settings read cache and perform a non-bootstrap refresh. Workspace pointers remain bootstrap-only, pending local writes retain precedence and superseded reads cannot refill the cache. Stream reconnection also refreshes, covering changes made while disconnected. VS Code owns a separate extension-host store and does not subscribe to this server watcher.
+
+External file authority and legacy profile reconciliation belong to the server's `lib/opencode/DOCUMENTATION.md`. Per-surface writes preserve untouched fields even when the writing surface has no value for them.
+
 ### Why the Settings view passes its voice availability snapshot
 
 Search and new-setting badges receive the voice fields the view subscribes to, so memoized results refresh when those fields change. Non-React callers can omit the snapshot and read the current config store; separate invalidation-only dependencies hid this relationship from hook checks.
