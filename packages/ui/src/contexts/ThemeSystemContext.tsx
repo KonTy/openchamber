@@ -235,7 +235,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     try {
       const res = await runtimeFetch('/api/config/themes', {
         method: 'GET',
-        credentials: isDesktopLocalOriginActive() ? 'omit' : 'include',
+        credentials: isDesktopLocalOriginActive() ? 'same-origin' : 'include',
         headers: {
           Accept: 'application/json',
         },
@@ -690,7 +690,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     try {
       const response = await runtimeFetch('/api/config/themes', {
         method: 'POST',
-        credentials: isDesktopLocalOriginActive() ? 'omit' : 'include',
+        credentials: isDesktopLocalOriginActive() ? 'same-origin' : 'include',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ theme: definition }),
       });

@@ -33,6 +33,14 @@ or their runtime owner change. Reloading a palette still updates splash colors,
 but must not republish the old selection: another window may already have
 selected the next theme while this window was loading its colors.
 
+### Why local desktop theme requests use same-origin credentials
+
+The HMR window reaches its API through the development proxy and needs its
+same-origin login cookie when reading or importing themes. Packaged desktop
+requests cross origins and keep using native bearer authentication without
+cookies. The `same-origin` credential mode preserves both paths; `omit` also
+strips the HMR cookie and leaves palette reloads unauthorized.
+
 ### Why settings adoption waits for an explicitly selected palette
 
 With system following off, a recognized `themeId` selects its actual light/dark variant even when a saved `themeVariant` is stale. An unavailable explicit ID or active-variant ID retains the current selection until a palette reload supplies it; local selection intent, another window's selection and runtime switching cancel that pending adoption. Incoming System mode checks the OS variant before changing modes and checks it again when palettes arrive. Unrelated save echoes do not cancel pending adoption. Selecting from a file is an adopting sync, not a save echo, and must not write the selection back.
