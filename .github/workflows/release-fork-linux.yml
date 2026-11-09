@@ -9,6 +9,10 @@ on:
         description: Create a draft release after validating every asset
         type: boolean
         default: false
+      verified_run_id:
+        description: Reuse a successful baseline inventory to replace an unpublished draft
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -24,7 +28,7 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ github.repository == 'KonTy/openchamber' }}
+    if: ${{ github.repository == 'KonTy/openchamber' && !inputs.verified_run_id }}
     strategy:
       fail-fast: false
       matrix:
@@ -270,26 +274,65 @@ jobs:
 
   draft:
     needs: inventory
-    if: ${{ github.repository == 'KonTy/openchamber' && github.event_name == 'workflow_dispatch' && inputs.draft_release && github.ref == 'refs/heads/work-theme-integration-baseline' }}
+    if: ${{ !cancelled() && github.repository == 'KonTy/openchamber' && github.event_name == 'workflow_dispatch' && inputs.draft_release && github.ref == 'refs/heads/work-theme-integration-baseline' && (needs.inventory.result == 'success' || inputs.verified_run_id != '') }}
     permissions:
       contents: write
+      actions: read
     runs-on: ubuntu-24.04
     steps:
+      - name: Resolve the verified inventory source
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REUSE_RUN_ID: ${{ inputs.verified_run_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "$REUSE_RUN_ID" ]; then
+            echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            echo "run_id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+          else
+            case "$REUSE_RUN_ID" in *[!0-9]*) exit 1 ;; esac
+            RUN=$(gh api "repos/$GH_REPO/actions/runs/$REUSE_RUN_ID")
+            test "$(jq -r .repository.full_name <<< "$RUN")" = "$GH_REPO"
+            test "$(jq -r .path <<< "$RUN")" = .github/workflows/release-fork-linux.yml
+            test "$(jq -r .head_branch <<< "$RUN")" = work-theme-integration-baseline
+            test "$(jq -r .status <<< "$RUN")" = completed
+            test "$(jq -r .conclusion <<< "$RUN")" = success
+            echo "sha=$(jq -r .head_sha <<< "$RUN")" >> "$GITHUB_OUTPUT"
+            echo "run_id=$REUSE_RUN_ID" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: fork-linux-verified
           path: release-files
+          run-id: ${{ steps.source.outputs.run_id }}
+          github-token: ${{ github.token }}
       - name: Upload a draft without changing the public update feed
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          EXPECTED_SOURCE: ${{ steps.source.outputs.sha }}
+          REUSE_RUN_ID: ${{ inputs.verified_run_id }}
         run: |
           set -euo pipefail
           cd release-files
           sha256sum --check SHA256SUMS
           VERSION=$(jq -r .version provenance.json)
           SOURCE=$(jq -r .sourceCommit provenance.json)
-          test "$SOURCE" = "$GITHUB_SHA"
-          gh release create "v$VERSION" --draft --target "$SOURCE" \
-            --title "OpenChamber $VERSION Linux" \
-            --notes "Linux fork build from $SOURCE. Ubuntu, Arch and Nobara userspace checks are attached. Publication requires separate AppImage update/shutdown and HMR evidence. Host compositor and sandbox policy remain unverified." ./*
+          test "$SOURCE" = "$EXPECTED_SOURCE"
+          if [ -n "$REUSE_RUN_ID" ]; then
+            test "$(gh release view "v$VERSION" --json isDraft --jq .isDraft)" = true
+            if gh api "repos/$GH_REPO/git/ref/tags/v$VERSION" --silent 2>"$RUNNER_TEMP/tag-check.err"; then
+              echo "Refusing to replace assets for an existing tag" >&2
+              exit 1
+            else
+              grep -q '(HTTP 404)' "$RUNNER_TEMP/tag-check.err"
+            fi
+            gh release upload "v$VERSION" ./* --clobber
+            gh release edit "v$VERSION" --target "$SOURCE"
+          else
+            gh release create "v$VERSION" --draft --target "$SOURCE" \
+              --title "OpenChamber $VERSION Linux" \
+              --notes "Linux fork build from $SOURCE. Ubuntu, Arch and Nobara userspace checks are attached. Publication requires separate AppImage update/shutdown and HMR evidence. Host compositor and sandbox policy remain unverified." ./*
+          fi

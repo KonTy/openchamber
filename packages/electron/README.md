@@ -27,13 +27,20 @@ Update it through pacman or rebuild the published `PKGBUILD`; the application's
 DEB/RPM updater does not support this format. The generated recipe pins both
 the DEB checksum and the source commit's MIT license.
 
-Pushes to `work-upstream-theme-integration` build validation artifacts.
+Pushes to `work-upstream-theme-integration` and `work-theme-integration-baseline`
+build validation artifacts.
 Manual runs can create a draft only from `work-theme-integration-baseline`.
 The workflow verifies the complete inventory, both updater manifests and native
 reports before writing `SHA256SUMS` and source provenance. It never publishes
 the draft automatically. Isolated AppImage update/shutdown and HMR validation
 remain separate release gates. Container checks do not prove
 compositor rendering, host sandbox policy or desktop integration on a real OS.
+To retry a draft upload without rebuilding or routing every asset through a
+local machine, dispatch with `draft_release=true` and `verified_run_id` set to
+the successful baseline run. The workflow checks the run's repository, workflow,
+branch and result, verifies its checksums and source provenance, and replaces
+assets only on an existing unpublished draft whose version has no Git tag.
+It preserves the built source commit, not the retry workflow's commit.
 The runtime containers allocate 1 GiB of shared memory. Docker and Podman's
 64 MiB default exhausts Chromium's asset-loading buffers during packaged startup
 and leaves the renderer blank with `ERR_UNEXPECTED` asset failures.

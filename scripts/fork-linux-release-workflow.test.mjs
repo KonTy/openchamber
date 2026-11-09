@@ -6,7 +6,7 @@ import yaml from 'yaml';
 const workflow = yaml.parse(fs.readFileSync(new URL('../.github/workflows/release-fork-linux.yml', import.meta.url), 'utf8'));
 
 test('fork Linux builds use standard native runners and the Ubuntu 22.04 userspace', () => {
-  assert.equal(workflow.jobs.build.if, "${{ github.repository == 'KonTy/openchamber' }}");
+  assert.equal(workflow.jobs.build.if, "${{ github.repository == 'KonTy/openchamber' && !inputs.verified_run_id }}");
   assert.equal(workflow.jobs.build.container.image, 'ubuntu:22.04');
   assert.equal(workflow.jobs.build.container.options, '--shm-size=1g --volume /etc/ssl/certs/ca-certificates.crt:/tmp/openchamber-build-ca.crt:ro');
   const tools = workflow.jobs.build.steps.find((step) => step.name === 'Install build and desktop runtime tools');
@@ -29,13 +29,35 @@ test('fork Linux builds use standard native runners and the Ubuntu 22.04 userspa
 });
 
 test('draft creation requires the maintained branch and explicit dispatch and cannot publish automatically', () => {
-  assert.equal(workflow.jobs.draft.if, "${{ github.repository == 'KonTy/openchamber' && github.event_name == 'workflow_dispatch' && inputs.draft_release && github.ref == 'refs/heads/work-theme-integration-baseline' }}");
+  assert.equal(workflow.jobs.draft.if, "${{ !cancelled() && github.repository == 'KonTy/openchamber' && github.event_name == 'workflow_dispatch' && inputs.draft_release && github.ref == 'refs/heads/work-theme-integration-baseline' && (needs.inventory.result == 'success' || inputs.verified_run_id != '') }}");
   assert.deepEqual(workflow.jobs.draft.needs, 'inventory');
-  const publication = workflow.jobs.draft.steps.find((step) => step.run)?.run;
+  const publication = workflow.jobs.draft.steps.find((step) => step.name === 'Upload a draft without changing the public update feed').run;
   assert(publication.includes('gh release create "v$VERSION" --draft'));
   assert(publication.includes('sha256sum --check SHA256SUMS'));
-  assert(publication.includes('test "$SOURCE" = "$GITHUB_SHA"'));
-  assert(!publication.includes('gh release edit'));
+  assert(publication.includes('test "$SOURCE" = "$EXPECTED_SOURCE"'));
+  assert(!publication.includes('--draft=false'));
+  assert(!publication.includes('--latest'));
+});
+
+test('inventory retries require a successful baseline run and an untagged draft', () => {
+  const steps = workflow.jobs.draft.steps;
+  const source = steps.find((step) => step.id === 'source').run;
+  for (const guard of [
+    'case "$REUSE_RUN_ID" in *[!0-9]*) exit 1 ;; esac',
+    'test "$(jq -r .repository.full_name <<< "$RUN")" = "$GH_REPO"',
+    'test "$(jq -r .path <<< "$RUN")" = .github/workflows/release-fork-linux.yml',
+    'test "$(jq -r .head_branch <<< "$RUN")" = work-theme-integration-baseline',
+    'test "$(jq -r .status <<< "$RUN")" = completed',
+    'test "$(jq -r .conclusion <<< "$RUN")" = success',
+  ]) assert(source.includes(guard));
+  const download = steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
+  assert.equal(download.with['run-id'], '${{ steps.source.outputs.run_id }}');
+  const publication = steps.find((step) => step.name === 'Upload a draft without changing the public update feed').run;
+  assert(publication.includes('test "$(gh release view "v$VERSION" --json isDraft --jq .isDraft)" = true'));
+  assert(publication.includes('gh api "repos/$GH_REPO/git/ref/tags/v$VERSION" --silent'));
+  assert(publication.includes("grep -q '(HTTP 404)'"));
+  assert(publication.includes('gh release edit "v$VERSION" --target "$SOURCE"'));
+  assert.equal(workflow.on.workflow_dispatch.inputs.verified_run_id.default, '');
 });
 
 test('both distro installs preserve an existing CLI and run two-window native validation', () => {
