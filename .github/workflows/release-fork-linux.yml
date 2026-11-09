@@ -330,7 +330,7 @@ jobs:
               grep -q '(HTTP 404)' "$RUNNER_TEMP/tag-check.err"
             fi
             gh release upload "v$VERSION" ./* --clobber
-            gh release edit "v$VERSION" --target "$SOURCE"
+            echo "Draft assets refreshed from $SOURCE; retarget and publish after the external release gates."
           else
             gh release create "v$VERSION" --draft --target "$SOURCE" \
               --title "OpenChamber $VERSION Linux" \

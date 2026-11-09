@@ -40,7 +40,10 @@ local machine, dispatch with `draft_release=true` and `verified_run_id` set to
 the successful baseline run. The workflow checks the run's repository, workflow,
 branch and result, verifies its checksums and source provenance, and replaces
 assets only on an existing unpublished draft whose version has no Git tag.
-It preserves the built source commit, not the retry workflow's commit.
+Provenance keeps the built source commit, not the retry workflow's commit.
+After the external gates, the publishing account retargets the draft to that
+commit and publishes it. The workflow token can upload assets but cannot
+retarget this draft to the earlier build commit.
 The runtime containers allocate 1 GiB of shared memory. Docker and Podman's
 64 MiB default exhausts Chromium's asset-loading buffers during packaged startup
 and leaves the renderer blank with `ERR_UNEXPECTED` asset failures.

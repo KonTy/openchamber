@@ -56,7 +56,7 @@ test('inventory retries require a successful baseline run and an untagged draft'
   assert(publication.includes('test "$(gh release view "v$VERSION" --json isDraft --jq .isDraft)" = true'));
   assert(publication.includes('gh api "repos/$GH_REPO/git/ref/tags/v$VERSION" --silent'));
   assert(publication.includes("grep -q '(HTTP 404)'"));
-  assert(publication.includes('gh release edit "v$VERSION" --target "$SOURCE"'));
+  assert(!publication.includes('gh release edit'));
   assert.equal(workflow.on.workflow_dispatch.inputs.verified_run_id.default, '');
 });
 
