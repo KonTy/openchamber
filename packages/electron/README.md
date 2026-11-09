@@ -11,6 +11,8 @@ requests, because it serves upstream artifacts. Canary requires a published
 
 The `Fork Linux release` workflow builds AppImage, DEB and RPM artifacts on
 native x64 and arm64 GitHub runners in Ubuntu 22.04 containers. It installs the
+build tools through HTTPS, bootstrapping certificate validation from the runner's
+read-only CA bundle before installing the container's certificate package. It installs the
 DEB in the disposable build container and exercises theme-file watching across
 2 native windows, including unchanged selection preferences. A separate Arch container
 builds and installs the x86_64 package from a SHA256-pinned DEB recipe and runs

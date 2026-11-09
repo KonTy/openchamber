@@ -8,9 +8,13 @@ const workflow = yaml.parse(fs.readFileSync(new URL('../.github/workflows/releas
 test('fork Linux builds use standard native runners and the Ubuntu 22.04 userspace', () => {
   assert.equal(workflow.jobs.build.if, "${{ github.repository == 'KonTy/openchamber' }}");
   assert.equal(workflow.jobs.build.container.image, 'ubuntu:22.04');
-  assert.equal(workflow.jobs.build.container.options, '--shm-size=1g');
+  assert.equal(workflow.jobs.build.container.options, '--shm-size=1g --volume /etc/ssl/certs/ca-certificates.crt:/tmp/openchamber-build-ca.crt:ro');
   const tools = workflow.jobs.build.steps.find((step) => step.name === 'Install build and desktop runtime tools');
   assert(tools.run.includes('zlib1g-dev'));
+  assert(tools.run.includes('cp /tmp/openchamber-build-ca.crt /etc/ssl/certs/ca-certificates.crt'));
+  assert(tools.run.includes("sed -i 's|http://|https://|g' /etc/apt/sources.list"));
+  assert(tools.run.includes('APT::Update::Error-Mode=any'));
+  assert(!tools.run.includes('Verify-Peer=false'));
   assert.deepEqual(workflow.jobs.build.strategy.matrix.include.map(({ runner, arch }) => [runner, arch]), [
     ['ubuntu-24.04', 'x64'], ['ubuntu-24.04-arm', 'arm64'],
   ]);
