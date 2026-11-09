@@ -24,7 +24,7 @@ retain their exact authored background. Bodies and gutters use the same fill.
 
 `color.ts` owns alpha composition and readable text selection. A solid status foreground is not the text for a tinted alert. `readableColors.ts` computes the palette used by both `cssGenerator.ts` and the extension host snapshot, including the corrected selection foreground. The SDK receives the computed text colors as required fields and applies them directly, without a second color algorithm. Color calculations run when the theme changes, not on each button render or session update.
 
-A theme can set `config.backgroundOpacity`, above 0 up to 1. `cssGenerator.apply(theme, backgroundOpacity)` takes it when it is below 1 and the desktop window was created transparent (`isDesktopTransparentWindow`, `OPENCHAMBER_TRANSPARENT_WINDOW` in `packages/electron/README.md`); `ThemeSystemContext` passes it only then, and any other window is opaque, as with a theme that has no such field. The extra block lowers the background of `#root` and the docked panel cards and nothing else, so text keeps the theme's opaque foreground. Tailwind writes `text-*/NN` as a `color-mix` toward `transparent`; the root `postcss.config.js` rewrites that to mix toward `--oc-text-backdrop`, which the block sets to the opaque theme background. With the variable unset the CSS is unchanged for every other runtime. Surfaces that paint their own color (the terminal canvas, the diff viewer, the file editor) stay opaque, and portals mount outside `#root` and keep the theme fill. Tailwind `opacity-NN` utilities still make their text translucent.
+A theme can set `config.backgroundOpacity`, above 0 up to 1. `cssGenerator.apply(theme, backgroundOpacity)` takes it when it is below 1 and the desktop window was created transparent (`isDesktopTransparentWindow`, `OPENCHAMBER_TRANSPARENT_WINDOW` in `packages/electron/README.md`); `ThemeSystemContext` passes it only then, and any other window is opaque, as with a theme that has no such field. The extra block lowers the background of `#root` and the docked panel cards and nothing else, so text keeps the theme's opaque foreground. Tailwind writes `text-*/NN` as a `color-mix` toward `transparent`; the root `postcss.config.js` rewrites that to mix toward `--oc-text-backdrop`, which the block sets to the opaque theme background even when its authored color contains alpha. With the variable unset the CSS is unchanged for every other runtime. Surfaces that paint their own color (the terminal canvas, the diff viewer, the file editor) stay opaque, and portals mount outside `#root` and keep the theme fill. The peek sidebar also keeps an opaque fill over the transcript. Tailwind `opacity-NN` utilities still make their text translucent.
 
 ### Why preference publication is separate from palette rendering
 
@@ -37,13 +37,12 @@ selected the next theme while this window was loading its colors.
 
 With system following off, a recognized `themeId` selects its actual light/dark variant even when a saved `themeVariant` is stale. An unavailable explicit ID or active-variant ID retains the current selection until a palette reload supplies it; local selection intent, another window's selection and runtime switching cancel that pending adoption. Incoming System mode checks the OS variant before changing modes and checks it again when palettes arrive. Unrelated save echoes do not cancel pending adoption. Selecting from a file is an adopting sync, not a save echo, and must not write the selection back.
 
-### Why dropdown picks switch modes only for a hidden variant
+### Why variant preferences preserve the color mode
 
-Picking a light or dark theme must make that pick visible. When its variant is
-already showing, the current mode stays unchanged, including System following
-the OS. Picking the other variant switches to Light or Dark; choosing System
-again restores OS following. This avoids both an invisible selection and an
-unnecessary loss of System mode.
+Appearance stores light and dark theme choices separately from the color-mode
+cards. Editing the inactive variant updates its preview while the displayed
+mode stays unchanged. The color-mode cards control whether Light, Dark or
+System is active.
 
 For authoring and supported fields, see `docs/CUSTOM_THEMES.md`. Surface semantics belong to `.agents/skills/theme-system/references/tokens-and-examples.md`.
 

@@ -564,7 +564,6 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
             return prev;
           }
           themeWriteIntentRef.current = true;
-          pendingSettingsThemeRef.current = null;
           return {
             ...prev,
             darkThemeId: theme.metadata.id,
@@ -575,9 +574,8 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
         if (prev.lightThemeId === theme.metadata.id && prev.themeMode === 'light') {
           return prev;
         }
-
         themeWriteIntentRef.current = true;
-        pendingSettingsThemeRef.current = null;
+        themeWriteIntentRef.current = true;
         return {
           ...prev,
           lightThemeId: theme.metadata.id,
@@ -593,9 +591,8 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     if (preferences.themeMode === mode) {
       return;
     }
-
     themeWriteIntentRef.current = true;
-    pendingSettingsThemeRef.current = null;
+    themeWriteIntentRef.current = true;
     setPreferences((prev) => ({
       ...prev,
       themeMode: mode,
@@ -611,7 +608,6 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
             return prev;
           }
           themeWriteIntentRef.current = true;
-          pendingSettingsThemeRef.current = null;
           return {
             ...prev,
             themeMode: 'system',
@@ -627,7 +623,6 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
           return prev;
         }
         themeWriteIntentRef.current = true;
-        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           themeMode: fallbackMode,
@@ -648,20 +643,17 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       }
       pendingSettingsThemeRef.current = null;
       setPreferences((prev) => {
-        const themeMode = currentTheme.metadata.variant === 'light' ? prev.themeMode : 'light';
-        if (prev.lightThemeId === theme.metadata.id && prev.themeMode === themeMode) {
+        if (prev.lightThemeId === theme.metadata.id) {
           return prev;
         }
         themeWriteIntentRef.current = true;
-        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           lightThemeId: theme.metadata.id,
-          themeMode,
         };
       });
     },
-    [availableThemes, currentTheme.metadata.variant],
+    [availableThemes],
   );
 
   const setDarkThemePreference = useCallback(
@@ -675,20 +667,17 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       }
       pendingSettingsThemeRef.current = null;
       setPreferences((prev) => {
-        const themeMode = currentTheme.metadata.variant === 'dark' ? prev.themeMode : 'dark';
-        if (prev.darkThemeId === theme.metadata.id && prev.themeMode === themeMode) {
+        if (prev.darkThemeId === theme.metadata.id) {
           return prev;
         }
         themeWriteIntentRef.current = true;
-        pendingSettingsThemeRef.current = null;
         return {
           ...prev,
           darkThemeId: theme.metadata.id,
-          themeMode,
         };
       });
     },
-    [availableThemes, currentTheme.metadata.variant],
+    [availableThemes],
   );
 
   const importTheme = useCallback(async (definition: ThemeDefinition, { activate = true }: { activate?: boolean } = {}): Promise<Theme> => {

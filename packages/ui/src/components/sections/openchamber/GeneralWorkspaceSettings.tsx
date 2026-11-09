@@ -120,6 +120,7 @@ const FilesAndEditorSection: React.FC<{ divider: boolean }> = ({ divider }) => {
             className="pt-1 pb-2"
           >
             <Textarea
+              dir="ltr"
               value={fileEditorVimMappings}
               onChange={(event) => setFileEditorVimMappings(event.target.value)}
               placeholder="inoremap jk <Esc>"
@@ -300,7 +301,7 @@ const TerminalSection: React.FC = () => {
   );
 };
 
-/** How the window behaves: header tabs, panel motion, where links open. */
+/** How the window behaves: header tabs, panel motion, scrollbars, where links open. */
 const PanelsAndLinksSection: React.FC = () => {
   const { t } = useI18n();
   const { isMobile } = useDeviceInfo();
@@ -316,6 +317,8 @@ const PanelsAndLinksSection: React.FC = () => {
   const setLiveBrowserTabLimit = useUIStore((state) => state.setLiveBrowserTabLimit);
   const openTrackerLinksOnBoard = useUIStore((state) => state.openTrackerLinksOnBoard);
   const setOpenTrackerLinksOnBoard = useUIStore((state) => state.setOpenTrackerLinksOnBoard);
+  const alwaysShowScrollbars = useUIStore((state) => state.alwaysShowScrollbars === true);
+  const setAlwaysShowScrollbars = useUIStore((state) => state.setAlwaysShowScrollbars);
 
   return (
     <SettingsSection title={t('settings.layout.general.panels.title')} contentClassName={SETTINGS_OPTION_STACK_CLASS}>
@@ -359,6 +362,13 @@ const PanelsAndLinksSection: React.FC = () => {
           settingsItem="appearance.open-links-in-browser-panel"
         />
       ) : null}
+      <SettingsCheckboxRow
+        checked={alwaysShowScrollbars}
+        onChange={setAlwaysShowScrollbars}
+        label={t('settings.openchamber.visual.field.alwaysShowScrollbars')}
+        info={t('settings.openchamber.visual.field.alwaysShowScrollbarsHint')}
+        settingsItem="appearance.scrollbars"
+      />
       <SettingsCheckboxRow
         checked={openTrackerLinksOnBoard}
         onChange={setOpenTrackerLinksOnBoard}

@@ -47,6 +47,8 @@
 
 Server-backed web, Electron, hosted mobile and Capacitor surfaces use the existing authenticated control stream to invalidate the settings read cache and perform a non-bootstrap refresh. Workspace pointers remain bootstrap-only, pending local writes retain precedence and superseded reads cannot refill the cache. Stream reconnection also refreshes, covering changes made while disconnected. VS Code owns a separate extension-host store and does not subscribe to this server watcher.
 
+Settings sync checks its read revision before and after hydration. An invalidated bootstrap re-reads the current document while the same runtime remains active, preserving the bootstrap event needed for workspace restoration. Ordinary file refreshes remain non-bootstrap and do not retry obsolete reads.
+
 External file authority and legacy profile reconciliation belong to the server's `lib/opencode/DOCUMENTATION.md`. Per-surface writes preserve untouched fields even when the writing surface has no value for them.
 
 ### Why the Settings view passes its voice availability snapshot

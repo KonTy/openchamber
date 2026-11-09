@@ -16,6 +16,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -194,6 +196,8 @@ export const dict: Record<I18nKey, string> = {
   ...documentToolbarI18n.ja,
   ...uiBlocksI18n.ja,
   ...updateDialogCanaryI18n.ja,
+  ...aboutReleaseNotesI18n.ja,
+  ...updateCheckErrorsI18n.ja,
   ...secretRequestI18n.ja,
   ...sessionNoticesI18n.ja,
   ...usageStatsI18n.ja,
@@ -3713,6 +3717,9 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.skillCountPlural': 'スキル {count} 個',
   'chat.workStatus.breakdown.mcpCountSingle': 'MCP {count} 個',
   'chat.workStatus.breakdown.mcpCountPlural': 'MCP {count} 個',
+  'chat.workStatus.breakdown.planCountSingle': 'プラン {count} 件',
+  'chat.workStatus.breakdown.planCountPlural': 'プラン {count} 件',
+  'chat.workStatus.linkedPlans.open': 'プラン「{title}」を開く',
   'chat.workStatus.sections.open': 'セクションを選択',
   'chat.workStatus.sections.dialogTitle': 'パネルのセクション',
   'chat.workStatus.sections.reorder': '{label}をドラッグして並び替え',

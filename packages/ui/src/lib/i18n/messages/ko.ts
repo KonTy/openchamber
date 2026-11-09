@@ -16,6 +16,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -194,6 +196,8 @@ export const dict: Record<I18nKey, string> = {
   ...documentToolbarI18n.ko,
   ...uiBlocksI18n.ko,
   ...updateDialogCanaryI18n.ko,
+  ...aboutReleaseNotesI18n.ko,
+  ...updateCheckErrorsI18n.ko,
   ...secretRequestI18n.ko,
   ...sessionNoticesI18n.ko,
   ...usageStatsI18n.ko,
@@ -3713,6 +3717,9 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.skillCountPlural': '스킬 {count}개',
   'chat.workStatus.breakdown.mcpCountSingle': 'MCP {count}개',
   'chat.workStatus.breakdown.mcpCountPlural': 'MCP {count}개',
+  'chat.workStatus.breakdown.planCountSingle': '계획 {count}개',
+  'chat.workStatus.breakdown.planCountPlural': '계획 {count}개',
+  'chat.workStatus.linkedPlans.open': '{title} 계획 열기',
   'chat.workStatus.sections.open': '섹션 선택',
   'chat.workStatus.sections.dialogTitle': '패널 섹션',
   'chat.workStatus.sections.reorder': '{label} 드래그하여 순서 변경',

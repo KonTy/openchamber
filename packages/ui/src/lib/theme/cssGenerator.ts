@@ -200,7 +200,7 @@ const sidebarBaseRgb = hexToRgb(theme.colors.surface.muted);
 }
 
 :root {
-  --oc-text-backdrop: ${surface.background};
+  --oc-text-backdrop: ${withOpacity(surface.background, 1)};
 }
 
 #root {
@@ -221,6 +221,10 @@ const sidebarBaseRgb = hexToRgb(theme.colors.surface.muted);
 
 #root > * {
   --sidebar: ${tint};
+}
+
+#root [data-sidebar-peek] {
+  --sidebar: ${surface.muted};
 }
 
 #root .oc-panel-edge:not([data-edge-floating]) {

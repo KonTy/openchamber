@@ -16,6 +16,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -194,6 +196,8 @@ export const dict: Record<I18nKey, string> = {
   ...documentToolbarI18n['zh-TW'],
   ...uiBlocksI18n['zh-TW'],
   ...updateDialogCanaryI18n['zh-TW'],
+  ...aboutReleaseNotesI18n['zh-TW'],
+  ...updateCheckErrorsI18n['zh-TW'],
   ...secretRequestI18n['zh-TW'],
   ...sessionNoticesI18n['zh-TW'],
   ...usageStatsI18n['zh-TW'],
@@ -3713,6 +3717,9 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.skillCountPlural': '{count} 個技能',
   'chat.workStatus.breakdown.mcpCountSingle': '{count} 個 MCP',
   'chat.workStatus.breakdown.mcpCountPlural': '{count} 個 MCP',
+  'chat.workStatus.breakdown.planCountSingle': '{count} 個計畫',
+  'chat.workStatus.breakdown.planCountPlural': '{count} 個計畫',
+  'chat.workStatus.linkedPlans.open': '開啟計畫 {title}',
   'chat.workStatus.sections.open': '選擇區塊',
   'chat.workStatus.sections.dialogTitle': '面板區塊',
   'chat.workStatus.sections.reorder': '拖曳 {label} 以重新排序',

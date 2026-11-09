@@ -61,39 +61,41 @@ async function withProvider(prefersColorScheme: Variant, run: (current: () => Th
 const pickFor = (context: ThemeContextValue, variant: Variant) =>
   variant === 'dark' ? context.setDarkThemePreference : context.setLightThemePreference;
 
-const rows: Array<{ from: ThemeMode; os: Variant; pick: Variant; mode: ThemeMode }> = [
-  { from: 'system', os: 'dark', pick: 'dark', mode: 'system' },
-  { from: 'system', os: 'light', pick: 'light', mode: 'system' },
-  { from: 'system', os: 'dark', pick: 'light', mode: 'light' },
-  { from: 'system', os: 'light', pick: 'dark', mode: 'dark' },
-  { from: 'light', os: 'dark', pick: 'light', mode: 'light' },
-  { from: 'light', os: 'dark', pick: 'dark', mode: 'dark' },
-  { from: 'dark', os: 'light', pick: 'dark', mode: 'dark' },
-  { from: 'dark', os: 'light', pick: 'light', mode: 'light' },
+const rows: Array<{ from: ThemeMode; os: Variant; pick: Variant }> = [
+  { from: 'system', os: 'dark', pick: 'dark' },
+  { from: 'system', os: 'light', pick: 'light' },
+  { from: 'system', os: 'dark', pick: 'light' },
+  { from: 'system', os: 'light', pick: 'dark' },
+  { from: 'light', os: 'dark', pick: 'light' },
+  { from: 'light', os: 'dark', pick: 'dark' },
+  { from: 'dark', os: 'light', pick: 'dark' },
+  { from: 'dark', os: 'light', pick: 'light' },
 ];
 
-for (const { from, os, pick, mode } of rows) {
-  test(`a ${pick} theme pick in ${from} mode on a ${os} OS ends in ${mode} mode showing the pick`, async () => {
+for (const { from, os, pick } of rows) {
+  test(`saving a ${pick} preference preserves ${from} mode on a ${os} OS`, async () => {
     await withProvider(os, async (current) => {
       await act(async () => current().setThemeMode(from));
+      const before = current().currentTheme;
       const saved = pick === 'dark' ? current().darkThemeId : current().lightThemeId;
       const picked = current().availableThemes.find((theme) => theme.metadata.variant === pick && theme.metadata.id !== saved);
       if (!picked) throw new Error(`No second ${pick} theme`);
       await act(async () => pickFor(current(), pick)(picked.metadata.id));
-      expect(current().themeMode).toBe(mode);
-      expect(current().currentTheme.metadata.id).toBe(picked.metadata.id);
+      expect(current().themeMode).toBe(from);
+      expect(pick === 'dark' ? current().darkThemeId : current().lightThemeId).toBe(picked.metadata.id);
+      expect(current().currentTheme.metadata.id).toBe(before.metadata.variant === pick ? picked.metadata.id : before.metadata.id);
     });
   });
 }
 
-test('picking the theme already saved for the variant that is not on screen shows it', async () => {
+test('saving an unchanged inactive variant preserves the current color mode', async () => {
   await withProvider('dark', async (current) => {
     await act(async () => current().setDarkThemePreference(current().darkThemeId));
     expect(current().themeMode).toBe('system');
     await act(async () => current().setThemeMode('light'));
     await act(async () => current().setDarkThemePreference(current().darkThemeId));
-    expect(current().themeMode).toBe('dark');
-    expect(current().currentTheme.metadata.id).toBe(current().darkThemeId);
+    expect(current().themeMode).toBe('light');
+    expect(current().currentTheme.metadata.id).toBe(current().lightThemeId);
   });
 });
 

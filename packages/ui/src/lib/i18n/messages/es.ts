@@ -16,6 +16,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -204,6 +206,8 @@ export const dict: Record<I18nKey, string> = {
   ...documentToolbarI18n.es,
   ...uiBlocksI18n.es,
   ...updateDialogCanaryI18n.es,
+  ...aboutReleaseNotesI18n.es,
+  ...updateCheckErrorsI18n.es,
   ...secretRequestI18n.es,
   ...sessionNoticesI18n.es,
   ...usageStatsI18n.es,
@@ -3704,6 +3708,9 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.skillCountPlural': '{count} habilidades',
   'chat.workStatus.breakdown.mcpCountSingle': '{count} MCP',
   'chat.workStatus.breakdown.mcpCountPlural': '{count} MCP',
+  'chat.workStatus.breakdown.planCountSingle': '{count} plan',
+  'chat.workStatus.breakdown.planCountPlural': '{count} planes',
+  'chat.workStatus.linkedPlans.open': 'Abrir el plan {title}',
   'chat.workStatus.sections.open': 'Elegir secciones',
   'chat.workStatus.sections.dialogTitle': 'Secciones del panel',
   'chat.workStatus.sections.reorder': 'Arrastra {label} para reordenar',

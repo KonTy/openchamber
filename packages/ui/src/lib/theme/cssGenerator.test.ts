@@ -37,9 +37,18 @@ test('a background opacity lowers only the background tokens and keeps text opaq
   const css = applied(0.5);
   const block = css.slice(css.indexOf('@layer base'));
 
-  expect(block).toContain(`--oc-text-backdrop: ${theme.colors.surface.background};`);
+  expect(block).toContain(`--oc-text-backdrop: ${withOpacity(theme.colors.surface.background, 1)};`);
   expect(block).toContain(`--background: ${withOpacity(theme.colors.surface.background, 0.5)};`);
   expect(block).not.toContain('foreground');
+  expect(block).toContain(`#root [data-sidebar-peek] {\n  --sidebar: ${theme.colors.surface.muted};`);
+});
+
+test('an authored translucent background cannot make the text backdrop translucent', () => {
+  const background = withOpacity(theme.colors.surface.background, 0.2);
+  const authored = { ...theme, colors: { ...theme.colors, surface: { ...theme.colors.surface, background } } };
+  new CSSVariableGenerator().apply(authored, 0.5);
+  expect(document.getElementById('opencode-theme-variables')?.textContent)
+    .toContain(`--oc-text-backdrop: ${withOpacity(background, 1)};`);
 });
 
 test('applying the theme again replaces the block instead of stacking it', () => {

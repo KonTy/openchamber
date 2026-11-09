@@ -16,6 +16,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -204,6 +206,8 @@ export const dict: Record<I18nKey, string> = {
   ...documentToolbarI18n.uk,
   ...uiBlocksI18n.uk,
   ...updateDialogCanaryI18n.uk,
+  ...aboutReleaseNotesI18n.uk,
+  ...updateCheckErrorsI18n.uk,
   ...secretRequestI18n.uk,
   ...sessionNoticesI18n.uk,
   ...usageStatsI18n.uk,
@@ -3704,6 +3708,9 @@ export const dict: Record<I18nKey, string> = {
   'chat.workStatus.breakdown.skillCountPlural': '{count} скілів',
   'chat.workStatus.breakdown.mcpCountSingle': '{count} MCP',
   'chat.workStatus.breakdown.mcpCountPlural': '{count} MCP',
+  'chat.workStatus.breakdown.planCountSingle': '{count} план',
+  'chat.workStatus.breakdown.planCountPlural': '{count} плани',
+  'chat.workStatus.linkedPlans.open': 'Відкрити план {title}',
   'chat.workStatus.sections.open': 'Обрати секції',
   'chat.workStatus.sections.dialogTitle': 'Секції панелі',
   'chat.workStatus.sections.reorder': 'Перетягніть {label}, щоб змінити порядок',

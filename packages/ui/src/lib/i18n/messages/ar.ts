@@ -15,6 +15,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -3629,6 +3631,9 @@ export const dict = {
   'chat.workStatus.breakdown.skillCountPlural': '{count} مهارات',
   'chat.workStatus.breakdown.mcpCountSingle': '{count} MCP',
   'chat.workStatus.breakdown.mcpCountPlural': '{count} MCP',
+  'chat.workStatus.breakdown.planCountSingle': '{count} خطة',
+  'chat.workStatus.breakdown.planCountPlural': '{count} خطط',
+  'chat.workStatus.linkedPlans.open': 'فتح الخطة {title}',
   'chat.workStatus.sections.open': 'اختيار الأقسام',
   'chat.workStatus.sections.dialogTitle': 'أقسام اللوحة',
   'chat.workStatus.sections.reorder': 'اسحب {label} لإعادة الترتيب',
@@ -3919,6 +3924,8 @@ export const dict = {
   ...documentToolbarI18n.ar,
   ...uiBlocksI18n.ar,
   ...updateDialogCanaryI18n.ar,
+  ...aboutReleaseNotesI18n.ar,
+  ...updateCheckErrorsI18n.ar,
   ...secretRequestI18n.ar,
   ...sessionNoticesI18n.ar,
   ...usageStatsI18n.ar,

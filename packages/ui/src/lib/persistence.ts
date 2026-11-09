@@ -638,7 +638,7 @@ export const syncDesktopSettings = async (options?: { bootstrap?: boolean; adopt
   ensureSettingsRuntimeLifecycle();
   const context = captureSettingsRuntimeContext();
   const operation = _settingsMutationTracker.begin();
-  const readRevision = _settingsReadRevision;
+  let readRevision = _settingsReadRevision;
 
   const persistApis = [getPersistApi(), useSessionDisplayStore.persist];
 
@@ -686,10 +686,10 @@ export const syncDesktopSettings = async (options?: { bootstrap?: boolean; adopt
   };
 
   const applySettings = async (loadedSettings: DesktopSettings) => {
-    if (!isSettingsRuntimeContextCurrent(context)) return;
+    if (!isSettingsRuntimeContextCurrent(context) || readRevision !== _settingsReadRevision) return;
     let settings = overlayPendingChanges(_settingsMutationTracker.reconcile(loadedSettings, operation));
     await waitForHydration();
-    if (!isSettingsRuntimeContextCurrent(context)) return;
+    if (!isSettingsRuntimeContextCurrent(context) || readRevision !== _settingsReadRevision) return;
     settings = withoutStaleDeviceFields(
       overlayPendingChanges(_settingsMutationTracker.reconcile(loadedSettings, operation)),
       context.runtimeKey,
@@ -713,12 +713,17 @@ export const syncDesktopSettings = async (options?: { bootstrap?: boolean; adopt
   };
 
   try {
-    const webSettings = await fetchWebSettings(context);
-    if (webSettings && isSettingsRuntimeContextCurrent(context)) {
-      await applySettings(webSettings);
-    } else if (isSettingsRuntimeContextCurrent(context) && readRevision === _settingsReadRevision) {
-      window.dispatchEvent(new Event('openchamber:settings-sync-failed'));
-    }
+    // A live refresh can supersede the startup read, but workspace restoration
+    // still needs a bootstrap-grade sync from the current document.
+    do {
+      readRevision = _settingsReadRevision;
+      const webSettings = await fetchWebSettings(context);
+      if (webSettings && isSettingsRuntimeContextCurrent(context)) {
+        await applySettings(webSettings);
+      } else if (isSettingsRuntimeContextCurrent(context) && readRevision === _settingsReadRevision) {
+        window.dispatchEvent(new Event('openchamber:settings-sync-failed'));
+      }
+    } while (bootstrap && isSettingsRuntimeContextCurrent(context) && readRevision !== _settingsReadRevision);
   } catch (error) {
     if (isSettingsRuntimeContextCurrent(context) && readRevision === _settingsReadRevision) window.dispatchEvent(new Event('openchamber:settings-sync-failed'));
     console.warn('Failed to synchronise settings:', error);

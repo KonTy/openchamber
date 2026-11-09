@@ -15,6 +15,8 @@ import { htmlRenderI18n } from './html-render.i18n';
 import { documentToolbarI18n } from './document-toolbar.i18n';
 import { uiBlocksI18n } from './ui-blocks.i18n';
 import { updateDialogCanaryI18n } from './update-dialog-canary.i18n';
+import { aboutReleaseNotesI18n } from './about-release-notes.i18n';
+import { updateCheckErrorsI18n } from './update-check-errors.i18n';
 import { secretRequestI18n } from './secret-request.i18n';
 import { sessionNoticesI18n } from './session-notices.i18n';
 import { usageStatsI18n } from './usage-stats.i18n';
@@ -3629,6 +3631,9 @@ export const dict = {
   'chat.workStatus.breakdown.skillCountPlural': '{count} מיומנויות',
   'chat.workStatus.breakdown.mcpCountSingle': 'MCP {count}',
   'chat.workStatus.breakdown.mcpCountPlural': '{count} שרתי MCP',
+  'chat.workStatus.breakdown.planCountSingle': 'תוכנית {count}',
+  'chat.workStatus.breakdown.planCountPlural': '{count} תוכניות',
+  'chat.workStatus.linkedPlans.open': 'פתיחת התוכנית {title}',
   'chat.workStatus.sections.open': 'בחר מקטעים',
   'chat.workStatus.sections.dialogTitle': 'מקטעי החלונית',
   'chat.workStatus.sections.reorder': 'גרור את {label} כדי לשנות את הסדר',
@@ -3919,6 +3924,8 @@ export const dict = {
   ...documentToolbarI18n.he,
   ...uiBlocksI18n.he,
   ...updateDialogCanaryI18n.he,
+  ...aboutReleaseNotesI18n.he,
+  ...updateCheckErrorsI18n.he,
   ...secretRequestI18n.he,
   ...sessionNoticesI18n.he,
   ...usageStatsI18n.he,

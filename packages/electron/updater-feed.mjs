@@ -6,14 +6,42 @@ export const PRODUCTION_UPDATER_FEED = Object.freeze({
   repo: 'openchamber',
 });
 
+const usesCanonicalReleaseRepository = PRODUCTION_UPDATER_FEED.owner.toLowerCase() === 'openchamber'
+  && PRODUCTION_UPDATER_FEED.repo.toLowerCase() === 'openchamber';
+
 // Canary builds replace the files of one pre-release, tagged `canary`, every
 // night. The GitHub provider reads only the latest full release, so the
 // Canary channel reads that pre-release's files directly, and the Stable
 // channel never sees them.
 export const CANARY_UPDATER_FEED = Object.freeze({
   provider: 'generic',
-  url: 'https://github.com/openchamber/openchamber/releases/download/canary/',
+  url: `https://github.com/${PRODUCTION_UPDATER_FEED.owner}/${PRODUCTION_UPDATER_FEED.repo}/releases/download/canary/`,
 });
+
+// Both channels are mirrored to Cloudflare R2 (scripts/release-mirror):
+// release.yml copies each Stable release, canary.yml each night. The same
+// files and manifests as on GitHub, served by Cloudflare, which stays up when
+// GitHub's release downloads fail and downloads faster. GitHub stays the
+// fallback.
+export const STABLE_MIRROR_UPDATER_FEED = Object.freeze({
+  provider: 'generic',
+  url: 'https://downloads.openchamber.dev/desktop/stable/',
+});
+
+export const CANARY_MIRROR_UPDATER_FEED = Object.freeze({
+  provider: 'generic',
+  url: 'https://downloads.openchamber.dev/desktop/canary/',
+});
+
+// After the mirror fails a check or a download, the app reads GitHub for this
+// long before trying the mirror again, so a broken mirror costs one failed
+// request, not one per check.
+export const MIRROR_FAILURE_BACKOFF_MS = 60 * 60 * 1000;
+
+/** The canonical mirror serves upstream releases; forks stay on their configured GitHub repository. */
+export const pickUpdaterSource = ({ mirrorFailedAt = null, now = Date.now() } = {}) => (
+  usesCanonicalReleaseRepository && (mirrorFailedAt === null || now - mirrorFailedAt >= MIRROR_FAILURE_BACKOFF_MS) ? 'mirror' : 'github'
+);
 
 // Where the app takes its updates from: the releases, or the nightly Canary
 // build. The person picks it in Settings → About; the app installs the next
@@ -62,8 +90,12 @@ export const resolveUpdaterFeed = ({
   environment = process.env,
   testBuild = false,
   channel = 'stable',
+  source = 'github',
 } = {}) => {
-  const productionFeed = channel === 'canary' ? CANARY_UPDATER_FEED : PRODUCTION_UPDATER_FEED;
+  const useMirror = usesCanonicalReleaseRepository && source === 'mirror';
+  const productionFeed = channel === 'canary'
+    ? (useMirror ? CANARY_MIRROR_UPDATER_FEED : CANARY_UPDATER_FEED)
+    : (useMirror ? STABLE_MIRROR_UPDATER_FEED : PRODUCTION_UPDATER_FEED);
   if (environment.OPENCHAMBER_E2E !== '1'
     || testBuild !== true) {
     return productionFeed;
