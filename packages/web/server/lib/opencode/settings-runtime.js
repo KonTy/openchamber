@@ -1217,13 +1217,14 @@ export const createSettingsRuntime = (deps) => {
 
   const reconcileExternalSettings = ({ source, changedKeys }) => {
     const result = persistSettingsLock.then(async () => {
-      const profileKeys = changedKeys.filter(isProfileSettingsKey);
+      let profileKeys = changedKeys.filter(isProfileSettingsKey);
       const instanceResult = await settingsFileState.read('settings');
       const preferences = await readPreferenceFields();
       if (instanceResult.status === 'failed' || (profileKeys.length > 0 && preferences.status === 'failed')) {
         throw new Error('External settings reconciliation paused while a settings file is unreadable');
       }
       const instance = instanceResult.document ?? {};
+      if (source === 'settings') profileKeys = profileKeys.filter((key) => Object.hasOwn(instance, key));
       const fields = structuredClone(preferences.fields ?? {});
       const preferenceChanges = preferences.status === 'ok' ? settingsFileState.getPendingChangedKeys('preferences') : [];
       const previousPreferences = settingsFileState.readReported('preferences') ?? {};

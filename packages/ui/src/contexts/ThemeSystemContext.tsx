@@ -140,7 +140,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
   // another window's theme never produce a write (see the 2026-08-30 theme
   // flip-flop: a fresh client used to PUT its default theme on load).
   const themeWriteIntentRef = useRef(false);
-  const pendingSettingsThemeRef = useRef<{ runtimeKey: string; targetId: string; detail: SettingsSyncedDetail } | null>(null);
+  const pendingSettingsThemeRef = useRef<{ runtimeKey: string; detail: SettingsSyncedDetail } | null>(null);
 
   const availableThemes = useMemo(() => {
     const merged: Theme[] = [];
@@ -503,29 +503,31 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       return true;
     }
     const selectedTheme = availableThemes.find((theme) => theme.metadata.id === detail.settings.themeId);
-    const variant = detail.settings.useSystemTheme === false
-      ? selectedTheme?.metadata.variant ?? detail.settings.themeVariant ?? currentTheme.metadata.variant
-      : currentTheme.metadata.variant;
+    const followsSystem = detail.settings.useSystemTheme ?? (preferences.themeMode === 'system');
+    const variant = followsSystem
+      ? getInitialSystemPreference() ? 'dark' : 'light'
+      : detail.settings.useSystemTheme === false
+        ? selectedTheme?.metadata.variant ?? detail.settings.themeVariant ?? currentTheme.metadata.variant
+        : currentTheme.metadata.variant;
     const targetId = (detail.settings.useSystemTheme === false ? detail.settings.themeId : undefined)
       ?? detail.settings[`${variant}ThemeId`];
     if (targetId && !availableThemes.some((theme) => theme.metadata.id === targetId)) {
-      pendingSettingsThemeRef.current = { runtimeKey: getRuntimeKey(), targetId, detail };
+      pendingSettingsThemeRef.current = { runtimeKey: getRuntimeKey(), detail };
       return false;
     }
     pendingSettingsThemeRef.current = null;
+    if (followsSystem) setSystemPrefersDark(variant === 'dark');
     setPreferences((prev) => resolveThemePreferencesFromSettingsSync(detail, prev, {
-      selectedTheme, activeVariant: currentTheme.metadata.variant,
+      selectedTheme, activeVariant: variant,
     }) ?? prev);
     return true;
-  }, [availableThemes, currentTheme.metadata.variant]);
+  }, [availableThemes, currentTheme.metadata.variant, preferences.themeMode]);
 
   useEffect(() => {
     const pending = pendingSettingsThemeRef.current;
     if (!pending || pending.runtimeKey !== getRuntimeKey()) return;
-    if (availableThemes.some((theme) => theme.metadata.id === pending.targetId)) {
-      applySyncedTheme(pending.detail);
-    }
-  }, [applySyncedTheme, availableThemes]);
+    applySyncedTheme(pending.detail);
+  }, [applySyncedTheme]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

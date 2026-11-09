@@ -52,6 +52,31 @@ const createRuntime = async ({
 };
 
 describe('settings runtime', () => {
+  it('retains an explicit selection when a legacy palette key is omitted', async () => {
+    const { runtime, settingsFilePath, tempRoot, cleanup } = await createRuntime({ mergePersistedSettings: (current, changes) => ({ ...current, ...changes }) });
+    const events = [];
+    let watch;
+    const retained = {
+      themeId: 'openchamber-dark', useSystemTheme: false, themeVariant: 'light',
+      lightThemeId: 'openchamber-light', darkThemeId: 'openchamber-dark',
+    };
+    try {
+      await runtime.persistSettings(retained);
+      const preferencesBefore = JSON.parse(await fsPromises.readFile(path.join(tempRoot, 'preferences.json'), 'utf8'));
+      watch = runtime.watchSettingsFiles({ onChange: async (change) => { await runtime.reconcileExternalSettings(change); events.push(change); } });
+      await watch.ready;
+      const settings = JSON.parse(await fsPromises.readFile(settingsFilePath, 'utf8'));
+      delete settings.lightThemeId;
+      await fsPromises.writeFile(settingsFilePath, JSON.stringify(settings));
+      await watch.check();
+      await watch.check();
+      expect(events).toEqual([{ source: 'settings', changedKeys: ['lightThemeId'] }]);
+      expect(await runtime.readSettingsFromDisk()).toMatchObject(retained);
+      const preferencesAfter = JSON.parse(await fsPromises.readFile(path.join(tempRoot, 'preferences.json'), 'utf8'));
+      expect(preferencesAfter.fields.themeId).toEqual(preferencesBefore.fields.themeId);
+    } finally { watch?.stop(); await cleanup(); }
+  });
+
   it('checks both source conflicts before changing an instance setting or its live callback', async () => {
     const changed = vi.fn();
     const { runtime, settingsFilePath, tempRoot, cleanup } = await createRuntime({

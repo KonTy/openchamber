@@ -8,15 +8,17 @@ import type { ThemeMode } from '@/types/theme';
 
 type Variant = 'light' | 'dark';
 
-async function withProvider(prefersColorScheme: Variant, run: (current: () => ThemeContextValue) => Promise<void>) {
+async function withProvider(prefersColorScheme: Variant, run: (current: () => ThemeContextValue, settingsWrites: string[]) => Promise<void>) {
   const dom = new Window({ url: 'http://theme.test', settings: { device: { prefersColorScheme } } });
   Object.assign(dom, {
     __OPENCHAMBER_API_BASE_URL__: 'http://theme.test',
     __OPENCHAMBER_LOCAL_ORIGIN__: 'http://theme.test',
   });
   const originals = new Map<string, PropertyDescriptor | undefined>();
+  const settingsWrites: string[] = [];
   const fetchResponse = (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = input instanceof Request ? input.url : String(input);
+    if (init?.method === 'PUT' && url.endsWith('/api/config/settings')) settingsWrites.push(url);
     return Promise.resolve(Response.json(url.endsWith('/api/config/themes')
       ? { themes: [] }
       : init?.method === 'PUT' ? JSON.parse(String(init.body)) : {}));
@@ -45,7 +47,7 @@ async function withProvider(prefersColorScheme: Variant, run: (current: () => Th
   };
   try {
     await act(async () => root.render(<ThemeSystemProvider><Probe /></ThemeSystemProvider>));
-    await run(current);
+    await run(current, settingsWrites);
   } finally {
     await act(async () => root.unmount());
     for (const [name, descriptor] of originals) {
@@ -92,5 +94,27 @@ test('picking the theme already saved for the variant that is not on screen show
     await act(async () => current().setDarkThemePreference(current().darkThemeId));
     expect(current().themeMode).toBe('dark');
     expect(current().currentTheme.metadata.id).toBe(current().darkThemeId);
+  });
+});
+
+test('incoming System mode waits for the OS-variant palette without writing settings back', async () => {
+  await withProvider('dark', async (current, settingsWrites) => {
+    await act(async () => current().setThemeMode('light'));
+    const before = current().currentTheme;
+    const dark = current().availableThemes.find((theme) => theme.metadata.variant === 'dark');
+    if (!dark) throw new Error('No dark theme is available for the fixture');
+    const arriving = { ...dark, metadata: { ...dark.metadata, id: 'pending-system-dark' } };
+    settingsWrites.length = 0;
+    await act(async () => window.dispatchEvent(new CustomEvent('openchamber:settings-synced', {
+      detail: { adoptTheme: true, settings: {
+        useSystemTheme: true, lightThemeId: current().lightThemeId, darkThemeId: arriving.metadata.id,
+      } },
+    })));
+    expect(current().themeMode).toBe('light');
+    expect(current().currentTheme.metadata.id).toBe(before.metadata.id);
+    await act(async () => window.dispatchEvent(new CustomEvent('openchamber:theme-hmr', { detail: arriving })));
+    expect(current().themeMode).toBe('system');
+    expect(current().currentTheme.metadata.id).toBe(arriving.metadata.id);
+    expect(settingsWrites).toHaveLength(0);
   });
 });

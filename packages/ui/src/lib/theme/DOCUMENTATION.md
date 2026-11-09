@@ -35,7 +35,7 @@ selected the next theme while this window was loading its colors.
 
 ### Why settings adoption waits for an explicitly selected palette
 
-With system following off, a recognized `themeId` selects its actual light/dark variant even when a saved `themeVariant` is stale. An unavailable explicit ID or active-variant ID retains the current selection until a palette reload supplies it; local selection intent, another window's selection and runtime switching cancel that pending adoption. Unrelated save echoes do not cancel it. Selecting from a file is an adopting sync, not a save echo, and must not write the selection back.
+With system following off, a recognized `themeId` selects its actual light/dark variant even when a saved `themeVariant` is stale. An unavailable explicit ID or active-variant ID retains the current selection until a palette reload supplies it; local selection intent, another window's selection and runtime switching cancel that pending adoption. Incoming System mode checks the OS variant before changing modes and checks it again when palettes arrive. Unrelated save echoes do not cancel pending adoption. Selecting from a file is an adopting sync, not a save echo, and must not write the selection back.
 
 ### Why dropdown picks switch modes only for a hidden variant
 
