@@ -8,6 +8,12 @@
 import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
+// Text, caret and selection caret take the composer's foreground, which pairs
+// with its fill (design-system.css, `.oc-composer-surface`): the elevated
+// foreground over the elevated fill in dark themes, the canvas foreground over
+// the canvas fill in light ones. Outside a composer it falls back to the
+// elevated foreground.
+
 /**
  * Exported for the regression test, which asserts the caret is styled where it
  * is actually drawn.
@@ -15,7 +21,7 @@ import { EditorView } from '@codemirror/view';
 export const COMPOSER_EDITOR_THEME_SPEC = {
     '&': {
         backgroundColor: 'transparent',
-        color: 'var(--surface-elevated-foreground)',
+        color: 'var(--oc-composer-foreground, var(--surface-elevated-foreground))',
     },
     '&.cm-focused': { outline: 'none' },
     '.cm-content': {
@@ -51,7 +57,7 @@ export const COMPOSER_EDITOR_THEME_SPEC = {
     // builds its selectors without scopes and throws RangeError on them the
     // moment this module is imported.
     '&.cm-editor .cm-cursor, &.cm-editor .cm-dropCursor': {
-        borderLeftColor: 'var(--surface-elevated-foreground)',
+        borderLeftColor: 'var(--oc-composer-foreground, var(--surface-elevated-foreground))',
         borderLeftWidth: '2px',
         transform: 'scaleY(1.15)',
         transformOrigin: 'center',
@@ -77,16 +83,17 @@ export const COMPOSER_EDITOR_THEME_SPEC = {
     // measures an empty line. The line keeps its height through CodeMirror's
     // own trailing <br>.
     //
-    // Kebab-case: the theme emits `--surface-elevated-foreground`. A camelCased
+    // Kebab-case: the theme emits `--surface-muted-foreground`. A camelCased
     // name here is an invalid declaration, and since `color` inherits, the
-    // placeholder silently renders at full text brightness instead. The
-    // placeholder paints on the elevated composer surface, where the muted
-    // foreground falls below the normal-text contrast floor in some themes;
-    // it takes the same token as the typed text above it.
+    // placeholder silently renders at full text brightness instead.
     '& .cm-content.cm-composer-empty .cm-line': { position: 'relative' },
     '& .cm-content.cm-composer-empty .cm-line::before': {
         content: 'var(--composer-placeholder)',
-        color: 'var(--surface-elevated-foreground)',
+        // Faded on purpose: the hint is the same sentence every time and
+        // nobody needs to read it, and at full muted strength it was the
+        // loudest thing in an empty composer (maintainer, 2026-11-12).
+        color: 'var(--surface-muted-foreground)',
+        opacity: '0.6',
         position: 'absolute',
         insetInlineStart: '0',
         top: '0',
@@ -166,7 +173,7 @@ export const NATIVE_SELECTION_THEME_SPEC = {
     // selection is non-empty. Typing stays on the transparent-native-caret
     // fast path.
     '&.cm-editor.oc-native-range .cm-content, &.cm-editor.oc-native-range .cm-content .cm-line': {
-        caretColor: 'var(--surface-elevated-foreground) !important',
+        caretColor: 'var(--oc-composer-foreground, var(--surface-elevated-foreground)) !important',
     },
     '&.oc-native-range .cm-scroller > .cm-cursorLayer': {
         display: 'none',

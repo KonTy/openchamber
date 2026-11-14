@@ -238,6 +238,19 @@ describe('settings runtime', () => {
       expect(changed).toHaveBeenCalledWith(true);
     } finally { await cleanup(); }
   });
+
+  it('restores enabled-by-default search when an external edit removes its opt-out', async () => {
+    const changed = vi.fn();
+    const { runtime, settingsFilePath, cleanup } = await createRuntime({ onMessageSearchEnabledChanged: changed });
+    try {
+      await runtime.persistSettings({ messageSearchEnabled: false });
+      changed.mockClear();
+      await fsPromises.writeFile(settingsFilePath, '{}');
+      await runtime.reconcileExternalSettings({ source: 'settings', changedKeys: ['messageSearchEnabled'] });
+      expect(changed).toHaveBeenCalledExactlyOnceWith(true);
+    } finally { await cleanup(); }
+  });
+
   it('adopts changed legacy profile keys without stale surface overrides and preserves unrelated preferences', async () => {
     const { runtime, settingsFilePath, cleanup } = await createRuntime({ mergePersistedSettings: (current, changes) => ({ ...current, ...changes }) });
     try {
